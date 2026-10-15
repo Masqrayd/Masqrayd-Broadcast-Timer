@@ -1,0 +1,26 @@
+name: Timer behavior and UI tests
+on:
+  push:
+    branches: [StartHere, main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Qt and OBS development packages
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build qt6-base-dev libobs-dev
+      - name: Build plugin and test executables
+        run: cmake -S . -B build-tests -G Ninja -DBROADCAST_TIMER_SYSTEM_BUILD=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug && cmake --build build-tests --parallel
+      - name: Check timing, controls, resizing and saved settings
+        run: ctest --test-dir build-tests --output-on-failure
+      - name: Render a timer preview
+        run: QT_QPA_PLATFORM=offscreen ./build-tests/timer-ui-tests timer-preview.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Broadcast-Timer-Preview
+          path: timer-preview.png
+          if-no-files-found: error

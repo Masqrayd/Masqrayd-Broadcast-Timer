@@ -1,0 +1,35 @@
+name: Build Broadcast Timer for Windows
+on:
+  push:
+    branches: [StartHere, main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2025-vs2026
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure native plugin for OBS 32.2.2
+        run: cmake --preset windows-x64 -DBUILD_TESTING=OFF
+      - name: Build Windows x64 plugin
+        run: cmake --build --preset windows-x64 --parallel
+      - name: Package Windows plugin
+        shell: pwsh
+        run: |
+          cmake --install build_x64 --config RelWithDebInfo --prefix dist
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item scripts/Install-BroadcastTimer.ps1 dist/
+          Copy-Item scripts/Uninstall-BroadcastTimer.ps1 dist/
+          Copy-Item scripts/INSTALL.cmd dist/
+          Copy-Item scripts/UNINSTALL.cmd dist/
+          Copy-Item docs/QUICK_START.md dist/
+          Copy-Item LICENSE dist/
+          if (!(Test-Path dist/masqrayd-broadcast-timer/bin/64bit/masqrayd-broadcast-timer.dll)) { throw 'Compiled DLL missing' }
+      - name: Downloadable Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Masqrayd-Broadcast-Timer-1.0.0-Windows-x64
+          path: dist/
+          if-no-files-found: error
