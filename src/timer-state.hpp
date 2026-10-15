@@ -36,6 +36,13 @@ struct TimerState {
         target = std::max<std::int64_t>(1000, duration);
         held = 0; anchor = 0; status = Status::Ready;
     }
+    void selectStory(int number, std::int64_t duration) {
+        story = std::max(1, number);
+        segment = Segment::Story;
+        reset(duration);
+    }
+    void previousStory(std::int64_t duration) { selectStory(story - 1, duration); }
+    void restartFromBeginning(std::int64_t duration) { selectStory(1, duration); }
     void nextStory(std::int64_t now, std::int64_t duration) {
         ++story; segment = Segment::Story; reset(duration); start(now);
     }

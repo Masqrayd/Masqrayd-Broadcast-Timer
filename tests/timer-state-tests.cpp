@@ -45,5 +45,23 @@ int main() {
     check(s.elapsed(20000000) == 10000000, "Delayed UI updates do not accumulate drift");
     TimerState b; b.takeBreak(0, 1000); b.nextStory(1000, 10000);
     check(b.story == 1, "Break before first story still starts at story one");
+    s.selectStory(9, 120000); s.start(1000); s.pause(31000);
+    s.restartFromBeginning(600000);
+    check(s.story == 1 && s.segment == TimerState::Segment::Story, "Restart from beginning returns to story one");
+    check(s.elapsed(999999) == 0 && s.target == 600000 && s.status == TimerState::Status::Ready, "Restart clears paused time and readies story preset");
+    s.start(1000000); s.nextStory(1005000, 600000);
+    check(s.story == 2, "Next Story after starting a restarted session advances to two");
+    s.pause(1010000); s.reset(600000);
+    check(s.story == 2 && s.elapsed(5000000) == 0, "Reset redoes story two without advancing its number");
+    s.selectStory(9, 600000); s.start(1000); s.previousStory(600000);
+    check(s.story == 8 && s.status == TimerState::Status::Ready && s.elapsed(99999) == 0, "Previous Story selects prior number and resets without running");
+    s.selectStory(1, 600000); s.previousStory(600000); s.previousStory(600000);
+    check(s.story == 1, "Previous Story cannot go below one");
+    s.takeBreak(1000, 300000); s.selectStory(2, 600000);
+    check(s.story == 2 && s.segment == TimerState::Segment::Story && s.target == 600000, "Selecting a story leaves break and uses story preset");
+    s.takeBreak(2000, 300000); s.restartFromBeginning(600000);
+    check(s.story == 1 && s.segment == TimerState::Segment::Story && s.status == TimerState::Status::Ready, "Restart session during break prepares story one");
+    s.selectStory(0, 600000);
+    check(s.story == 1, "Invalid story selection clamps to one");
     std::cout << checks << " timer checks passed\n";
 }

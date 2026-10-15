@@ -1,5 +1,9 @@
 #include "timer-window.hpp"
 #include <QApplication>
+#include <QAction>
+#include <QContextMenuEvent>
+#include <QInputDialog>
+#include <QMenu>
 #include <QPushButton>
 #include <QSettings>
 #include <QTemporaryDir>
@@ -14,6 +18,19 @@ static void click(TimerWindow &w, const char *name) {
     auto *b = w.findChild<QPushButton *>(name); check(b, "Control exists");
     b->click(); QApplication::processEvents();
 }
+static void menuAction(TimerWindow &w, const char *name, bool enabled = true) {
+    QTimer::singleShot(0, &w, [&w, name, enabled] {
+        auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
+        check(menu, "Right-click opens menu");
+        auto *action = menu->findChild<QAction *>(name);
+        check(action && action->isEnabled() == enabled, "Story menu action has expected enabled state");
+        if (enabled) action->trigger();
+        menu->close();
+    });
+    const QPoint position = w.rect().center();
+    QContextMenuEvent event(QContextMenuEvent::Mouse, position, w.mapToGlobal(position));
+    QApplication::sendEvent(&w, &event); QApplication::processEvents();
+}
 int main(int argc, char **argv) {
     QApplication app(argc, argv); QTemporaryDir dir; qint64 t = 1000;
     QString path = dir.filePath("timer.ini");
@@ -27,6 +44,27 @@ int main(int argc, char **argv) {
         click(w, "nextStory"); check(w.state().story == 2, "Next Story button advances");
         click(w, "takeBreak"); check(w.state().target == 300000, "Break button uses break duration");
         click(w, "nextStory"); check(w.state().target == 600000 && w.state().story == 3, "Return from break uses story duration");
+        t += 12000; click(w, "pause"); menuAction(w, "restartCurrentStory");
+        check(w.state().story == 3 && w.state().elapsed(t) == 0 && w.state().status == TimerState::Status::Ready, "Right-click restart redoes same paused story");
+        menuAction(w, "previousStory");
+        check(w.state().story == 2 && w.state().status == TimerState::Status::Ready, "Right-click previous story returns to story two");
+        click(w, "start"); t += 1000; click(w, "reset");
+        check(w.state().story == 2 && w.state().elapsed(t) == 0, "Reset preserves story two when redoing it");
+        QTimer::singleShot(0, &w, [&w] {
+            // The outer callback selects the menu item, and the inner callback
+            // answers the resulting modal story-number dialog.
+            QTimer::singleShot(0, &w, [] {
+                auto *dialog = qobject_cast<QInputDialog *>(QApplication::activeModalWidget());
+                check(dialog, "Set Story Number opens dialog"); dialog->setIntValue(9); dialog->accept();
+            });
+        });
+        menuAction(w, "setStoryNumber");
+        check(w.state().story == 9 && w.state().status == TimerState::Status::Ready, "Story number dialog selects nine without starting");
+        click(w, "takeBreak"); menuAction(w, "restartFromBeginning");
+        check(w.state().story == 1 && w.state().segment == TimerState::Segment::Story && w.state().target == 600000 && w.state().elapsed(t) == 0, "Restart from break resets entire sequence to story one");
+        menuAction(w, "previousStory", false); check(w.state().story == 1, "Previous is disabled at story one");
+        click(w, "start"); click(w, "nextStory");
+        check(w.state().story == 2, "Restarted sequence advances to story two");
         for (QSize size : {QSize(220, 220), QSize(280, 600), QSize(800, 250), QSize(420, 355)}) {
             w.resize(size); app.processEvents();
             for (const char *name : {"start", "pause", "stop", "reset", "nextStory", "takeBreak"}) {

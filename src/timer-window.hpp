@@ -31,6 +31,8 @@ private:
     void settingsDialog();
     void applyWindowFlags();
     void resetTimer();
+    void selectStory(int number);
+    void storyNumberDialog();
     void resetAlerts();
     void ensureOnScreen();
     std::int64_t duration() const;

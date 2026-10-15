@@ -8,6 +8,7 @@
 #include <QFontDatabase>
 #include <QFormLayout>
 #include <QGuiApplication>
+#include <QInputDialog>
 #include <QLabel>
 #include <QMenu>
 #include <QMouseEvent>
@@ -120,6 +121,7 @@ TimerWindow::TimerWindow(const QString &settingsFile, QWidget *parent, std::func
     break_ = new FitButton("Take a Break", this); break_->setObjectName("takeBreak");
     segments->addWidget(next_, 1); segments->addWidget(break_, 1); layout->addLayout(segments, 3);
     start_->setToolTip("Start or continue the current timer"); next_->setToolTip("Start a fresh story timer immediately");
+    reset_->setToolTip("Reset the current timer without changing the story number. Right-click for story navigation and Restart from Story 1.");
     break_->setToolTip("Start a fresh break countdown immediately");
     connect(start_, &QPushButton::clicked, this, [this] { state_.start(now()); refresh(); });
     connect(pause_, &QPushButton::clicked, this, &TimerWindow::togglePause);
@@ -144,6 +146,16 @@ void TimerWindow::resetAlerts() { warningSounded_ = false; endSounded_ = false; 
 void TimerWindow::nextStory() { state_.nextStory(now(), std::int64_t(storySeconds_) * 1000); resetAlerts(); refresh(); }
 void TimerWindow::takeBreak() { state_.takeBreak(now(), std::int64_t(breakSeconds_) * 1000); resetAlerts(); refresh(); }
 void TimerWindow::resetTimer() { state_.reset(duration()); resetAlerts(); refresh(); }
+void TimerWindow::selectStory(int number) {
+    state_.selectStory(number, std::int64_t(storySeconds_) * 1000);
+    resetAlerts(); refresh();
+}
+void TimerWindow::storyNumberDialog() {
+    bool accepted = false;
+    const int number = QInputDialog::getInt(this, "Choose Story", "Story number (timer will be reset and ready):",
+                                          std::max(1, state_.story), 1, 999999, 1, &accepted);
+    if (accepted) selectStory(number);
+}
 void TimerWindow::togglePause() {
     if (state_.status == TimerState::Status::Running) state_.pause(now());
     else if (state_.status == TimerState::Status::Paused) state_.start(now());
@@ -214,6 +226,12 @@ void TimerWindow::closeEvent(QCloseEvent *event) {
 }
 void TimerWindow::contextMenuEvent(QContextMenuEvent *event) {
     QMenu menu(this);
+    menu.addAction("Restart current story", this, [this] { selectStory(state_.story); })->setObjectName("restartCurrentStory");
+    auto *previous = menu.addAction("Previous story", this, [this] { selectStory(state_.story - 1); });
+    previous->setObjectName("previousStory"); previous->setEnabled(state_.story > 1);
+    menu.addAction("Set story number...", this, &TimerWindow::storyNumberDialog)->setObjectName("setStoryNumber");
+    menu.addAction("Restart from Story 1", this, [this] { selectStory(1); })->setObjectName("restartFromBeginning");
+    menu.addSeparator();
     menu.addAction("Timer settings...", this, &TimerWindow::settingsDialog);
     auto *count = menu.addAction("Count up for stories"); count->setCheckable(true); count->setChecked(countUp_);
     menu.addSeparator();

@@ -1,6 +1,6 @@
 # Masqrayd Broadcast Timer — Windows quick start
 
-1. Download **Masqrayd-Broadcast-Timer-1.0.0-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
+1. Download **Masqrayd-Broadcast-Timer-1.0.1-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
 2. Right-click the downloaded ZIP and choose **Extract All**.
 3. Close OBS completely.
 4. Open the extracted folder, double-click **INSTALL.cmd**, and accept the Windows administrator prompt. No Python, CMake, or Visual Studio installation is needed.
@@ -18,6 +18,17 @@ The package targets OBS Studio **32.2.2, Windows x64**. It has not been tested o
 - **Take a Break:** switches to a separate break countdown and starts immediately. Next Story returns to a fresh story timer.
 
 Default story length is **10 minutes**; break length is **5 minutes**. The timer pulses red with **30 seconds remaining**, and continues red into overtime. Count-up mode shows elapsed time against the same target. Breaks always count down.
+
+## Restarting or redoing stories
+
+Right-click the timer for these controls:
+
+- **Restart current story:** clear its timer and keep the current story number. From a break, return to that story.
+- **Previous story:** go back one story and clear its timer. Disabled at Story 1.
+- **Set story number...:** choose a story directly, such as Story 2 for a retake.
+- **Restart from Story 1:** reset the story sequence and timer to Story 1. Your saved durations and settings remain.
+
+These actions prepare the chosen story in **Ready** state. Click **Start** when you are ready to record it. **Next Story** always advances to the following story and starts it immediately. The normal **Reset** button clears only the current segment timer, keeping its number.
 
 ## Settings and window controls
 
