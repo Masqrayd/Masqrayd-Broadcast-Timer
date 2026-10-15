@@ -200,9 +200,12 @@ void TimerWindow::savePreferences() {
     prefs_.setValue("warningSeconds", warningSeconds_); prefs_.setValue("countUp", countUp_);
     prefs_.setValue("flash", flash_); prefs_.setValue("sound", sound_); prefs_.setValue("24hour", use24Hour_);
     prefs_.setValue("topmost", topmost_); prefs_.setValue("borderless", borderless_);
-    prefs_.setValue("openWithOBS", openWithOBS_); prefs_.setValue("geometry", saveGeometry()); prefs_.sync();
+    prefs_.setValue("openWithOBS", openWithOBS_);
+    if (!property("masqraydStacked").toBool()) prefs_.setValue("geometry", saveGeometry());
+    prefs_.sync();
 }
 void TimerWindow::applyWindowFlags() {
+    if (property("masqraydStacked").toBool()) return;
     const bool visible = isVisible(); const QRect old = geometry();
     Qt::WindowFlags flags = Qt::Window | Qt::WindowCloseButtonHint | Qt::WindowMinimizeButtonHint;
     if (topmost_) flags |= Qt::WindowStaysOnTopHint;
@@ -219,7 +222,10 @@ void TimerWindow::ensureOnScreen() {
         move(available.center() - rect().center());
     }
 }
-void TimerWindow::showTimer() { ensureOnScreen(); showNormal(); raise(); activateWindow(); }
+void TimerWindow::showTimer() {
+    if (property("masqraydStacked").toBool()) { window()->showNormal(); window()->raise(); window()->activateWindow(); return; }
+    ensureOnScreen(); showNormal(); raise(); activateWindow();
+}
 void TimerWindow::shutdown() { shuttingDown_ = true; ticker_.stop(); savePreferences(); hide(); }
 void TimerWindow::closeEvent(QCloseEvent *event) {
     savePreferences(); if (shuttingDown_) event->accept(); else { event->ignore(); hide(); }
@@ -237,6 +243,7 @@ void TimerWindow::contextMenuEvent(QContextMenuEvent *event) {
     menu.addSeparator();
     auto *top = menu.addAction("Always on top"); top->setCheckable(true); top->setChecked(topmost_);
     auto *border = menu.addAction("Borderless window"); border->setCheckable(true); border->setChecked(borderless_);
+    top->setEnabled(!property("masqraydStacked").toBool()); border->setEnabled(top->isEnabled());
     auto *startup = menu.addAction("Open with OBS"); startup->setCheckable(true); startup->setChecked(openWithOBS_);
     menu.addSeparator();
     auto *hint = menu.addAction("Move: drag the clock or Ctrl+drag | Resize: drag edges"); hint->setEnabled(false);
@@ -282,6 +289,7 @@ bool TimerWindow::eventFilter(QObject *object, QEvent *event) {
     if (event->type() == QEvent::ContextMenu && widget != this) {
         contextMenuEvent(static_cast<QContextMenuEvent *>(event)); return true;
     }
+    if (property("masqraydStacked").toBool()) return QDialog::eventFilter(object, event);
     if (event->type() != QEvent::MouseButtonPress && event->type() != QEvent::MouseButtonRelease && event->type() != QEvent::MouseMove)
         return QDialog::eventFilter(object, event);
     auto *mouse = static_cast<QMouseEvent *>(event);

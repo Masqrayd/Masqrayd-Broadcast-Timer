@@ -1,2 +1,2 @@
 @echo off
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Install-BroadcastTimer.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Install-BroadcastStack.ps1"

@@ -1,12 +1,30 @@
-# Masqrayd Broadcast Timer — Windows quick start
+# Masqrayd Broadcast Stack + Timer — Windows quick start
 
-1. Download **Masqrayd-Broadcast-Timer-1.0.1-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
+1. Download **Masqrayd-Broadcast-Stack-1.1.0-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
 2. Right-click the downloaded ZIP and choose **Extract All**.
 3. Close OBS completely.
 4. Open the extracted folder, double-click **INSTALL.cmd**, and accept the Windows administrator prompt. No Python, CMake, or Visual Studio installation is needed.
-5. Open OBS. The timer opens automatically. You can also use **Tools > Masqrayd Broadcast Timer**.
+5. Open OBS. For the group, choose **Tools > Masqrayd Broadcast Stack**. The normal timer remains available under **Tools > Masqrayd Broadcast Timer**.
+
+The ZIP updates the camera, Scene Vault/Scene Controller, and timer together so they can attach safely. Their saved source, crop, scenes, durations, and preferences are retained. The installer backs up existing DLL directories outside OBS's plugin scan folder and rolls them back if copying fails.
 
 The package targets OBS Studio **32.2.2, Windows x64**. It has not been tested on other OBS versions or architectures. It uses OBS's own Qt libraries; do not copy Qt DLLs into OBS.
+
+## Put your panels together
+
+1. Open your camera through **Tools > Camera Pop-Out Native** and choose your finished OBS camera scene/source as usual.
+2. Open **Tools > Masqrayd Broadcast Stack**.
+3. Click **Panels** and check **Include Camera**, **Include Scene Controller**, and **Include Timer** as desired. The controller can be opened for you when you choose it. A camera that is not open yet displays a waiting section and connects after you open it.
+4. Drag the stack header to move all attached panels together. Drag the dividers to change individual section heights; drag outside edges/corners to resize the group.
+5. Click **Detach** on a section to put it back into its own window. Other sections remain grouped. You can also uncheck that panel in the Panels menu.
+
+**Camera above controls above timer** is the default order. To leave the camera separate, include only Scene Controller and Timer. Right-click the stack header or use Panels for reordering, side-by-side layout, Always on Top, Borderless Window, or Open Stack with OBS. The selected panels, order, dimensions, and divider positions are saved.
+
+The stack is optional and does not open automatically until you enable **Open stack with OBS**. A saved but unopened stack leaves your standalone windows alone. Closing/hiding the stack hides the group while the timer and controls keep running; reopening it restores the group. Detach All returns all selected panels to separate windows.
+
+Each plugin keeps its own functional right-click menu while attached, including story navigation and camera source/crop controls. Individual window move/resize/topmost controls are disabled while attached; use the group's controls instead. Detaching restores the original window flags and standalone position.
+
+The stack recognizes only the native Masqrayd Camera Pop-Out plugin, the Masqrayd Scene Controller, and the Masqrayd timer. It does not attach an OBS projector or an older Python camera window.
 
 ## During a broadcast
 
@@ -47,7 +65,7 @@ The timer does not switch OBS scenes, pause recording, or put itself into a vide
 
 ## Uninstall
 
-Close OBS, then run **UNINSTALL.cmd**. This removes only this plugin. Saved preferences remain in OBS's plugin configuration folder.
+Close OBS, then run **UNINSTALL.cmd**. This removes the timer and its Broadcast Stack window. The camera and Scene Vault plugins remain usable separately. Saved preferences remain in OBS's plugin configuration folder.
 
 ## If it doesn't appear
 
