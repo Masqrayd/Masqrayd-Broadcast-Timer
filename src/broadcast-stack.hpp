@@ -45,6 +45,7 @@ private:
         QPointer<QWidget> widget, oldParent;
         Qt::WindowFlags oldFlags;
         QByteArray oldGeometry;
+        QRect oldRect;
     };
     void attachQt(Panel panel, QWidget *widget);
     void detach(Panel panel, bool show);

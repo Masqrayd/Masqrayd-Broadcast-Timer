@@ -7,7 +7,6 @@
 #include <QPushButton>
 #include <QSettings>
 #include <QTemporaryDir>
-#include <QTest>
 #include <iostream>
 #include <cstdlib>
 

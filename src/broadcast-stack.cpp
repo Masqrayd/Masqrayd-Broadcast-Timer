@@ -90,6 +90,7 @@ void BroadcastStack::attachQt(Panel panel, QWidget *widget) {
     if (!widget || widget->property("masqraydStacked").toBool() || !widget->isWindow()) return;
     QScopedValueRollback<bool> guard(changing_, true);
     slot.oldParent = widget->parentWidget(); slot.oldFlags = widget->windowFlags(); slot.oldGeometry = widget->saveGeometry();
+    slot.oldRect = widget->geometry();
     slot.widget = widget;
     widget->setProperty("masqraydStacked", true);
     widget->hide(); widget->setParent(slot.frame, Qt::Widget); slot.layout->addWidget(widget, 1);
@@ -101,6 +102,12 @@ void BroadcastStack::detach(Panel panel, bool show) {
     else if (auto *widget = slot.widget.data()) {
         widget->removeEventFilter(this); widget->hide(); slot.layout->removeWidget(widget);
         widget->setParent(slot.oldParent, slot.oldFlags); widget->restoreGeometry(slot.oldGeometry);
+        // restoreGeometry can apply frame/screen corrections after a widget was
+        // embedded. Restore its exact client rectangle on a still-present screen.
+        for (auto *screen : QGuiApplication::screens()) {
+            const QRect visible = slot.oldRect.intersected(screen->availableGeometry());
+            if (visible.width() >= 100 && visible.height() >= 100) { widget->setGeometry(slot.oldRect); break; }
+        }
         widget->setProperty("masqraydStacked", false); slot.widget.clear();
         if (show) { widget->show(); widget->raise(); }
     }

@@ -11,7 +11,6 @@
 #include <QSettings>
 #include <QSplitter>
 #include <QTemporaryDir>
-#include <QTest>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <iostream>
@@ -89,6 +88,12 @@ int main(int argc, char **argv) {
         check(timer.isVisible(), "Reopening group restores attached panels");
         timer.showTimer(); check(!timer.isWindow(), "Opening attached timer raises the group instead of breaking attachment");
         stack.savePreferences(); stack.shutdown(); app.processEvents();
+        if (timer.windowFlags() != timerFlags || timer.geometry() != timerGeometry) {
+            const QRect got = timer.geometry();
+            std::cerr << "Timer flags expected=" << int(timerFlags) << " actual=" << int(timer.windowFlags())
+                      << " rect expected=" << timerGeometry.x() << ',' << timerGeometry.y() << ',' << timerGeometry.width() << ',' << timerGeometry.height()
+                      << " actual=" << got.x() << ',' << got.y() << ',' << got.width() << ',' << got.height() << '\n';
+        }
         check(timer.isWindow() && timer.windowFlags() == timerFlags && timer.geometry() == timerGeometry, "Shutdown restores timer flags, parent and original geometry");
         check(timer.parentWidget() == &owner, "Original QObject ownership is restored");
         check(timer.state().elapsed(t) == 7000, "Detach never resets story timing");
