@@ -1,6 +1,6 @@
 # Masqrayd Broadcast Stack + Timer — Windows quick start
 
-1. Download **Masqrayd-Broadcast-Stack-1.1.0-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
+1. Download **Masqrayd-Broadcast-Stack-1.1.1-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
 2. Right-click the downloaded ZIP and choose **Extract All**.
 3. Close OBS completely.
 4. Open the extracted folder, double-click **INSTALL.cmd**, and accept the Windows administrator prompt. No Python, CMake, or Visual Studio installation is needed.

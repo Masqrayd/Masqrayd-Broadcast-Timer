@@ -7,6 +7,7 @@
 #include <QDialog>
 #include <QLabel>
 #include <QMenu>
+#include <QMouseEvent>
 #include <QPushButton>
 #include <QSettings>
 #include <QSplitter>
@@ -47,6 +48,14 @@ int main(int argc, char **argv) {
     controller->show(); app.processEvents();
     const QRect controllerGeometry = controller->geometry(); const auto controllerFlags = controller->windowFlags();
     const QRect timerGeometry = timer.geometry(); const auto timerFlags = timer.windowFlags();
+    // Reproduce adopting panels immediately after their floating resize edge
+    // was hovered. Both the panel and a child can retain the resize cursor.
+    controller->setCursor(Qt::SizeHorCursor); button->setCursor(Qt::SizeHorCursor);
+    timer.setCursor(Qt::SizeHorCursor);
+    auto *timerStart = timer.findChild<QPushButton *>("start"); check(timerStart, "Timer Start button exists");
+    timerStart->setCursor(Qt::SizeHorCursor);
+    auto *timerDisplay = timer.findChild<QWidget *>("timerDisplay"); check(timerDisplay, "Timer display exists");
+    timerDisplay->setCursor(Qt::SizeHorCursor);
     BroadcastStack::Providers providers;
     providers.qtPanel = [&timer, &controller](BroadcastStack::Panel panel) -> QWidget * {
         return panel == BroadcastStack::Timer ? static_cast<QWidget *>(&timer) : controller.data();
@@ -61,6 +70,18 @@ int main(int argc, char **argv) {
         check(timer.property("masqraydStacked").toBool(), "Attachment protocol marks timer");
         stack.setIncluded(BroadcastStack::Controller, true); app.processEvents();
         check(!controller->isWindow() && stack.isAttached(BroadcastStack::Controller), "Controller and timer coexist in one window");
+        check(controller->cursor().shape() == Qt::ArrowCursor && timer.cursor().shape() == Qt::ArrowCursor, "Attached panels clear stale floating resize cursors");
+        check(button->cursor().shape() == Qt::PointingHandCursor && timerStart->cursor().shape() == Qt::PointingHandCursor, "Embedded scene and timer buttons regain click cursors");
+        check(timerDisplay->cursor().shape() == Qt::ArrowCursor, "Embedded display clears stale child resize cursor");
+        const QPoint edge(1, stack.height() / 2);
+        QMouseEvent edgeHover(QEvent::MouseMove, QPointF(edge), QPointF(stack.mapToGlobal(edge)), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
+        QApplication::sendEvent(&stack, &edgeHover);
+        check(stack.cursor().shape() == Qt::SizeHorCursor, "Outer edge still offers horizontal resizing");
+        check(button->cursor().shape() == Qt::PointingHandCursor && timerStart->cursor().shape() == Qt::PointingHandCursor && timerDisplay->cursor().shape() == Qt::ArrowCursor, "Stack edge cursor cannot leak into embedded controls");
+        auto *detachCursor = stack.findChild<QToolButton *>("detach_timer");
+        check(detachCursor && detachCursor->cursor().shape() == Qt::PointingHandCursor, "Detach button blocks inherited resize cursor");
+        QEvent leave(QEvent::Leave); QApplication::sendEvent(&stack, &leave);
+        check(stack.cursor().shape() == Qt::ArrowCursor, "Leaving a resize edge clears its cursor");
         button->click(); check(transitions == 1, "Embedded control remains interactive");
         t += 2000; check(timer.state().elapsed(t) == 2000, "Timer keeps elapsed time through grouping");
         const QPoint before = timer.mapToGlobal(QPoint(0, 0)); const QPoint groupBefore = stack.pos();

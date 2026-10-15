@@ -1,6 +1,7 @@
 #include "broadcast-stack.hpp"
 #include "native-camera-surface.hpp"
 #include <QApplication>
+#include <QAbstractButton>
 #include <QCloseEvent>
 #include <QContextMenuEvent>
 #include <QGuiApplication>
@@ -18,6 +19,22 @@
 namespace {
 const char *keys[] = {"camera", "controller", "timer"};
 const char *names[] = {"Camera", "Scene Controller", "Timer"};
+bool resizeCursor(Qt::CursorShape shape) {
+    return shape == Qt::SizeHorCursor || shape == Qt::SizeVerCursor ||
+           shape == Qt::SizeFDiagCursor || shape == Qt::SizeBDiagCursor ||
+           shape == Qt::SplitHCursor || shape == Qt::SplitVCursor || shape == Qt::SizeAllCursor;
+}
+void resetEmbeddedCursors(QWidget *panel) {
+    // A floating panel may still have its last edge-hover cursor when adopted.
+    // Give the panel an explicit default so it also blocks the stack's inherited
+    // edge cursor; retain meaningful non-resize cursors on other controls.
+    panel->setCursor(Qt::ArrowCursor);
+    for (auto *child : panel->findChildren<QWidget *>()) {
+        if (child->window() != panel->window()) continue;
+        if (qobject_cast<QAbstractButton *>(child)) child->setCursor(Qt::PointingHandCursor);
+        else if (resizeCursor(child->cursor().shape())) child->unsetCursor();
+    }
+}
 }
 BroadcastStack::BroadcastStack(const QString &file, Providers providers)
     : QDialog(nullptr), prefs_(file, QSettings::IniFormat), providers_(std::move(providers)) {
@@ -35,6 +52,7 @@ BroadcastStack::BroadcastStack(const QString &file, Providers providers)
     auto *barLayout = new QHBoxLayout(bar_); barLayout->setContentsMargins(5, 2, 3, 2);
     title_ = new QLabel("Broadcast Stack", bar_); title_->setStyleSheet("color:#eeeef4; font-weight:bold;");
     auto *menu = new QToolButton(bar_); menu->setText("Panels"); menu->setObjectName("stackPanelsMenu");
+    menu->setCursor(Qt::PointingHandCursor);
     connect(menu, &QToolButton::clicked, this, [this, menu] { options(menu->mapToGlobal(QPoint(0, menu->height()))); });
     barLayout->addWidget(title_, 1); barLayout->addWidget(menu); layout->addWidget(bar_);
     splitter_ = new QSplitter(Qt::Vertical, this); splitter_->setObjectName("stackSplitter");
@@ -49,6 +67,7 @@ BroadcastStack::BroadcastStack(const QString &file, Providers providers)
         auto *headerLayout = new QHBoxLayout(header); headerLayout->setContentsMargins(4, 1, 3, 1); headerLayout->setSpacing(3);
         auto *label = new QLabel(names[i], header); label->setStyleSheet("color:#c7c7d0; font-size:11px;");
         auto *detachButton = new QToolButton(header); detachButton->setText("Detach"); detachButton->setObjectName(QString("detach_%1").arg(keys[i]));
+        detachButton->setCursor(Qt::PointingHandCursor);
         detachButton->setToolTip("Return this panel to its own window");
         connect(detachButton, &QToolButton::clicked, this, [this, panel] { setIncluded(panel, false); });
         headerLayout->addWidget(label, 1); headerLayout->addWidget(detachButton); slot.layout->addWidget(header);
@@ -94,6 +113,7 @@ void BroadcastStack::attachQt(Panel panel, QWidget *widget) {
     slot.widget = widget;
     widget->setProperty("masqraydStacked", true);
     widget->hide(); widget->setParent(slot.frame, Qt::Widget); slot.layout->addWidget(widget, 1);
+    resetEmbeddedCursors(widget);
     widget->installEventFilter(this); slot.placeholder->hide(); widget->show();
 }
 void BroadcastStack::detach(Panel panel, bool show) {
@@ -232,6 +252,10 @@ bool BroadcastStack::eventFilter(QObject *object, QEvent *event) {
         }
         return QDialog::eventFilter(object, event);
     }
+    if (event->type() == QEvent::Leave && !dragging_ && !edges_) {
+        setCursor(Qt::ArrowCursor);
+        if (auto *widget = qobject_cast<QWidget *>(object)) widget->setCursor(Qt::ArrowCursor);
+    }
     if (event->type() == QEvent::ContextMenu) { options(static_cast<QContextMenuEvent *>(event)->globalPos()); return true; }
     if (event->type() != QEvent::MouseButtonPress && event->type() != QEvent::MouseButtonRelease && event->type() != QEvent::MouseMove)
         return QDialog::eventFilter(object, event);
@@ -257,7 +281,7 @@ bool BroadcastStack::eventFilter(QObject *object, QEvent *event) {
         setGeometry(r); return true;
     }
     if (event->type() == QEvent::MouseButtonRelease && mouse->button() == Qt::LeftButton && (dragging_ || edges_)) {
-        dragging_ = false; edges_ = {}; releaseMouse(); savePreferences(); return true;
+        dragging_ = false; edges_ = {}; releaseMouse(); setCursor(Qt::ArrowCursor); savePreferences(); return true;
     }
     if (event->type() == QEvent::MouseMove) {
         const bool horizontal = edges.testFlag(Qt::LeftEdge) || edges.testFlag(Qt::RightEdge);
