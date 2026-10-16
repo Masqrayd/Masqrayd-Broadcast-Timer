@@ -1,0 +1,73 @@
+name: Build Broadcast Timer for Windows
+on:
+  push:
+    branches: [StartHere, main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2025-vs2026
+    steps:
+      - uses: actions/checkout@v4
+      - name: Camera with optional stack attachment
+        uses: actions/checkout@v4
+        with:
+          repository: Masqrayd/Camera-Pop-Out-Native
+          ref: e61102dc12d4694a2e94a24aa1e965cfdf205a0f
+          path: _partners/camera
+      - name: Scene controller with optional stack attachment
+        uses: actions/checkout@v4
+        with:
+          repository: Masqrayd/Scene-Vault
+          ref: ce0642409d8d0154a2a41eab07278b9826b406a2
+          path: _partners/controller
+      - name: Configure native plugin for OBS 32.2.2
+        run: cmake --preset windows-x64 -DBUILD_TESTING=ON
+      - name: Build Windows x64 plugin
+        run: cmake --build --preset windows-x64 --parallel
+      - name: Test controls and real native window attachment
+        shell: pwsh
+        run: |
+          $qt = Get-ChildItem .deps -Filter Qt6Core.dll -Recurse | Select-Object -First 1
+          $platform = Get-ChildItem .deps -Filter qwindows.dll -Recurse | Select-Object -First 1
+          if (!$qt -or !$platform) { throw 'Qt runtime missing for Windows tests' }
+          $env:PATH = "$($qt.Directory.FullName);$env:PATH"
+          $env:QT_PLUGIN_PATH = $platform.Directory.Parent.FullName
+          ctest --test-dir build_x64 -C RelWithDebInfo --output-on-failure --timeout 90
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Package Windows plugin
+        shell: pwsh
+        run: |
+          cmake --install build_x64 --config RelWithDebInfo --prefix dist
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item scripts/Install-BroadcastStack.ps1 dist/
+          Copy-Item scripts/Uninstall-BroadcastTimer.ps1 dist/
+          Copy-Item scripts/INSTALL.cmd dist/
+          Copy-Item scripts/UNINSTALL.cmd dist/
+          Copy-Item docs/QUICK_START.md dist/
+          Copy-Item LICENSE dist/
+          if (!(Test-Path dist/masqrayd-broadcast-timer/bin/64bit/masqrayd-broadcast-timer.dll)) { throw 'Compiled DLL missing' }
+          if (!(Test-Path dist/scene-vault/bin/64bit/scene-vault.dll)) { throw 'Scene controller DLL missing' }
+          if (!(Test-Path dist/camera-popout-native/bin/64bit/camera-popout-native.dll)) { throw 'Camera DLL missing' }
+      - name: Verify installer upgrade in an isolated test directory
+        shell: pwsh
+        run: |
+          $fixture = Join-Path $env:RUNNER_TEMP 'broadcast-stack-install-test'
+          foreach ($name in @('masqrayd-broadcast-timer','scene-vault','camera-popout-native')) {
+            New-Item -ItemType Directory -Path (Join-Path $fixture $name) -Force | Out-Null
+            Set-Content (Join-Path $fixture "$name/old-version.txt") 'prior version'
+          }
+          & ./dist/Install-BroadcastStack.ps1 -PluginRoot $fixture -NoPause
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($name in @('masqrayd-broadcast-timer','scene-vault','camera-popout-native')) {
+            if (!(Test-Path (Join-Path $fixture "$name/bin/64bit/$name.dll"))) { throw "Upgrade failed: $name" }
+            if (Test-Path (Join-Path $fixture "$name/old-version.txt")) { throw "Old plugin directory was not backed up: $name" }
+          }
+      - name: Downloadable Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Masqrayd-Broadcast-Stack-1.1.2-Windows-x64
+          path: dist/
+          if-no-files-found: error
