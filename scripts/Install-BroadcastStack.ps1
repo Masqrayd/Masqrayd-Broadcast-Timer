@@ -2,7 +2,7 @@ param([string]$PluginRoot = "$env:ProgramData\obs-studio\plugins", [switch]$NoPa
 $ErrorActionPreference = 'Stop'
 try {
     if (Get-Process -Name obs64 -ErrorAction SilentlyContinue) { throw 'Close OBS before installing Broadcast Stack, then run INSTALL.cmd again.' }
-    $plugins = @('masqrayd-broadcast-timer', 'scene-vault', 'camera-popout-native')
+    $plugins = @('masqrayd-broadcast-timer', 'scene-vault', 'camera-popout-native', 'masqrayd-scene-collections')
     foreach ($name in $plugins) {
         if (!(Test-Path (Join-Path $PSScriptRoot "$name\bin\64bit\$name.dll"))) {
             throw "Missing compiled $name DLL. Extract the entire Windows package first."
@@ -42,7 +42,7 @@ try {
         throw
     }
     Write-Host 'Installed. Open OBS > Tools > Masqrayd Broadcast Stack, then choose Panels.' -ForegroundColor Green
-    Write-Host 'Camera, scene controller, and timer preferences were retained.'
+    Write-Host 'Camera, scene controller, timer, and scene collection preferences were retained.'
     Write-Host "Previous plugin files are backed up at $backup"
     if (!$NoPause) { Read-Host 'Press Enter to close' }
 }

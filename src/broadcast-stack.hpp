@@ -15,7 +15,7 @@ class NativeCameraSurface;
 // by the UI tests without opening cameras or controlling real OBS scenes.
 class BroadcastStack : public QDialog {
 public:
-    enum Panel { Camera = 0, Controller = 1, Timer = 2 };
+    enum Panel { Camera = 0, Controller = 1, Timer = 2, Collections = 3, PanelCount = 4 };
     struct Providers {
         std::function<QWidget *(Panel)> qtPanel;
         std::function<std::uintptr_t()> camera;
@@ -56,7 +56,7 @@ private:
     void updateEmpty();
     QSettings prefs_;
     Providers providers_;
-    std::array<Slot, 3> slots_;
+    std::array<Slot, PanelCount> slots_;
     NativeCameraSurface *camera_;
     QSplitter *splitter_;
     QWidget *bar_;

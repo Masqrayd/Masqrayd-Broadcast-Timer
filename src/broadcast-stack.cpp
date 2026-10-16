@@ -17,8 +17,8 @@
 #include <algorithm>
 
 namespace {
-const char *keys[] = {"camera", "controller", "timer"};
-const char *names[] = {"Camera", "Scene Controller", "Timer"};
+const char *keys[] = {"camera", "controller", "timer", "collections"};
+const char *names[] = {"Camera", "Scene Controller", "Timer", "Scene Collections"};
 bool resizeCursor(Qt::CursorShape shape) {
     return shape == Qt::SizeHorCursor || shape == Qt::SizeVerCursor ||
            shape == Qt::SizeFDiagCursor || shape == Qt::SizeBDiagCursor ||
@@ -58,7 +58,7 @@ BroadcastStack::BroadcastStack(const QString &file, Providers providers)
     splitter_ = new QSplitter(Qt::Vertical, this); splitter_->setObjectName("stackSplitter");
     splitter_->setChildrenCollapsible(false); splitter_->setHandleWidth(5); layout->addWidget(splitter_, 1);
     camera_ = nullptr;
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < PanelCount; ++i) {
         auto panel = static_cast<Panel>(i); auto &slot = slots_[i];
         slot.wanted = prefs_.value(QString("include/%1").arg(keys[i]), false).toBool();
         slot.frame = new QWidget(splitter_); slot.frame->setObjectName(QString("stackSlot_%1").arg(keys[i]));
@@ -81,8 +81,10 @@ BroadcastStack::BroadcastStack(const QString &file, Providers providers)
     empty_ = new QLabel("Choose panels from the Panels menu.\nOnly the panels you choose will be grouped.", this);
     empty_->setAlignment(Qt::AlignCenter); empty_->setWordWrap(true); empty_->setProperty("stackPlaceholder", true); layout->addWidget(empty_, 1);
     applyWindowFlags(); restoreGeometry(prefs_.value("geometry").toByteArray());
-    const QStringList order = prefs_.value("order").toStringList();
-    for (const QString &key : order) for (int i = 0; i < 3; ++i) if (key == keys[i]) splitter_->insertWidget(splitter_->count(), slots_[i].frame);
+    QStringList order = prefs_.value("order").toStringList();
+    // Append newly introduced panels after saved panels during upgrades.
+    for (const char *key : keys) if (!order.contains(key)) order << key;
+    for (const QString &key : order) for (int i = 0; i < PanelCount; ++i) if (key == keys[i]) splitter_->insertWidget(splitter_->count(), slots_[i].frame);
     const bool horizontal = prefs_.value("horizontal", false).toBool(); splitter_->setOrientation(horizontal ? Qt::Horizontal : Qt::Vertical);
     splitter_->restoreState(prefs_.value("splitter").toByteArray());
     connect(splitter_, &QSplitter::splitterMoved, this, [this] { savePreferences(); });
@@ -135,7 +137,7 @@ void BroadcastStack::detach(Panel panel, bool show) {
 }
 void BroadcastStack::scan() {
     if (changing_ || shuttingDown_ || !activated_) return;
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < PanelCount; ++i) {
         auto panel = static_cast<Panel>(i); auto &slot = slots_[i];
         if (!slot.wanted) continue;
         if (panel == Camera) {
@@ -156,26 +158,26 @@ void BroadcastStack::scan() {
 }
 void BroadcastStack::showStack() {
     activated_ = true; ensureOnScreen(); showNormal();
-    if (providers_.open) for (int i = 1; i < 3; ++i) if (slots_[i].wanted && !slots_[i].widget) providers_.open(static_cast<Panel>(i));
+    if (providers_.open) for (int i = 1; i < PanelCount; ++i) if (slots_[i].wanted && !slots_[i].widget) providers_.open(static_cast<Panel>(i));
     scan(); raise(); activateWindow();
 }
 void BroadcastStack::setHorizontal(bool horizontal) {
     splitter_->setOrientation(horizontal ? Qt::Horizontal : Qt::Vertical);
-    splitter_->setSizes({250, 230, 250}); savePreferences();
+    splitter_->setSizes({250, 230, 250, 180}); savePreferences();
 }
 void BroadcastStack::movePanel(Panel panel, int offset) {
     const int index = splitter_->indexOf(slots_[panel].frame);
-    splitter_->insertWidget(std::clamp(index + offset, 0, 2), slots_[panel].frame); savePreferences();
+    splitter_->insertWidget(std::clamp(index + offset, 0, PanelCount - 1), slots_[panel].frame); savePreferences();
 }
 void BroadcastStack::updateEmpty() {
-    const bool any = slots_[0].wanted || slots_[1].wanted || slots_[2].wanted;
+    const bool any = std::any_of(slots_.begin(), slots_.end(), [](const Slot &s) { return s.wanted; });
     splitter_->setVisible(any); empty_->setVisible(!any);
 }
 void BroadcastStack::savePreferences() {
     if (restoring_) return;
-    for (int i = 0; i < 3; ++i) prefs_.setValue(QString("include/%1").arg(keys[i]), slots_[i].wanted);
+    for (int i = 0; i < PanelCount; ++i) prefs_.setValue(QString("include/%1").arg(keys[i]), slots_[i].wanted);
     QStringList order;
-    for (int n = 0; n < 3; ++n) for (int i = 0; i < 3; ++i) if (splitter_->widget(n) == slots_[i].frame) order << keys[i];
+    for (int n = 0; n < PanelCount; ++n) for (int i = 0; i < PanelCount; ++i) if (splitter_->widget(n) == slots_[i].frame) order << keys[i];
     prefs_.setValue("order", order); prefs_.setValue("splitter", splitter_->saveState());
     prefs_.setValue("horizontal", splitter_->orientation() == Qt::Horizontal);
     prefs_.setValue("geometry", saveGeometry()); prefs_.setValue("topmost", topmost_);
@@ -184,7 +186,7 @@ void BroadcastStack::savePreferences() {
 void BroadcastStack::shutdown() {
     if (shuttingDown_) return;
     shuttingDown_ = true; poll_.stop(); savePreferences();
-    for (int i = 0; i < 3; ++i) detach(static_cast<Panel>(i), false);
+    for (int i = 0; i < PanelCount; ++i) detach(static_cast<Panel>(i), false);
     hide();
 }
 void BroadcastStack::applyWindowFlags() {
@@ -210,7 +212,7 @@ void BroadcastStack::closeEvent(QCloseEvent *event) { savePreferences(); hide();
 void BroadcastStack::contextMenuEvent(QContextMenuEvent *event) { options(event->globalPos()); }
 void BroadcastStack::options(const QPoint &position) {
     QMenu menu(this); menu.setObjectName("broadcastStackMenu");
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < PanelCount; ++i) {
         auto panel = static_cast<Panel>(i); auto *action = menu.addAction(QString("Include %1").arg(names[i]));
         action->setObjectName(QString("include_%1").arg(keys[i])); action->setCheckable(true); action->setChecked(included(panel));
         connect(action, &QAction::triggered, this, [this, panel](bool checked) { setIncluded(panel, checked); });
@@ -221,7 +223,7 @@ void BroadcastStack::options(const QPoint &position) {
     auto *horizontal = menu.addAction("Arrange side by side"); horizontal->setCheckable(true); horizontal->setChecked(splitter_->orientation() == Qt::Horizontal);
     connect(horizontal, &QAction::triggered, this, [this] { setHorizontal(true); });
     auto *order = menu.addMenu("Panel order");
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < PanelCount; ++i) {
         auto panel = static_cast<Panel>(i);
         order->addAction(QString("Move %1 earlier").arg(names[i]), this, [this, panel] { movePanel(panel, -1); });
         order->addAction(QString("Move %1 later").arg(names[i]), this, [this, panel] { movePanel(panel, 1); });
@@ -236,12 +238,12 @@ void BroadcastStack::options(const QPoint &position) {
     auto *open = menu.addAction("Open stack with OBS"); open->setCheckable(true); open->setChecked(openWithOBS_);
     connect(open, &QAction::triggered, this, [this](bool checked) { openWithOBS_ = checked; savePreferences(); });
     menu.addSeparator();
-    menu.addAction("Detach all panels", this, [this] { for (int i = 0; i < 3; ++i) setIncluded(static_cast<Panel>(i), false); });
+    menu.addAction("Detach all panels", this, [this] { for (int i = 0; i < PanelCount; ++i) setIncluded(static_cast<Panel>(i), false); });
     menu.addAction("Hide stack (panels keep running)", this, &QWidget::hide);
     menu.exec(position);
 }
 bool BroadcastStack::eventFilter(QObject *object, QEvent *event) {
-    if (!changing_ && !shuttingDown_) for (int i = 1; i < 3; ++i) {
+    if (!changing_ && !shuttingDown_) for (int i = 1; i < PanelCount; ++i) {
         if (object != slots_[i].widget.data()) continue;
         if (event->type() == QEvent::Close) {
             slots_[i].wanted = false; detach(static_cast<Panel>(i), false); slots_[i].frame->hide(); updateEmpty(); savePreferences(); return true;

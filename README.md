@@ -6,17 +6,27 @@ Designed for **OBS Studio 32.2.2 on Windows x64**. No Python or separate launche
 
 ## Get the Windows download
 
-Open [Actions](https://github.com/Masqrayd/Masqrayd-Broadcast-Timer/actions), select a successful **Build Broadcast Timer for Windows** run, and download **Masqrayd-Broadcast-Stack-1.1.2-Windows-x64** under Artifacts. Extract the ZIP, close OBS, then run **INSTALL.cmd**. The GitHub **Code > Download ZIP** option contains source code and cannot be installed directly.
+Open [Actions](https://github.com/Masqrayd/Masqrayd-Broadcast-Timer/actions), select a successful **Build Broadcast Timer for Windows** run, and download **Masqrayd-Broadcast-Stack-1.2.0-Windows-x64** under Artifacts. Extract the ZIP, close OBS, then run **INSTALL.cmd**. The GitHub **Code > Download ZIP** option contains source code and cannot be installed directly.
 
 See [the quick-start guide](docs/QUICK_START.md) for installation, controls, window settings, and troubleshooting.
 
 ## Optional shared broadcast window
 
-Open **Tools > Masqrayd Broadcast Stack**, then use **Panels** to include Camera, Scene Controller, and/or Timer. Default order is camera above controls above timer, matching the broadcast layout. Only checked panels join the window. Each section has a **Detach** button that returns it to its previous standalone position and size.
+Open **Tools > Masqrayd Broadcast Stack**, then use **Panels** to include Camera, Scene Controller, Timer, and/or Scene Collections. Default order is camera above controls above timer, matching the broadcast layout. Only checked panels join the window. Each section has a **Detach** button that returns it to its previous standalone position and size.
 
 Drag the stack header to move the group; drag outer edges to resize the window, and dividers to resize the sections. The Panels menu also supports side-by-side layout, reordering, borderless mode, always-on-top, opening with OBS, and detaching all panels. Choices and layout are remembered. Opening the stack is optional; a closed stack does not pull standalone panels into a hidden window.
 
-The coordinated Windows ZIP includes compatible builds of all three plugins, preserving their existing preferences. The stack itself is included in the timer DLL. It embeds the original camera display and controls; no duplicate OBS source or recording is created. See [quick start](docs/QUICK_START.md).
+The coordinated Windows ZIP includes compatible builds of all four plugins, preserving their existing preferences. The stack itself is included in the timer DLL. It embeds the original camera display and controls; no duplicate OBS source or recording is created. See [quick start](docs/QUICK_START.md).
+
+## Scene collection switcher
+
+**Tools > Masqrayd Scene Collections** opens a separate native plugin panel. Click a channel to load its existing OBS scene collection, using the same OBS frontend operation as the Scene Collection menu. The current collection is gold. Switching collections keeps the current profile. The panel does not stop or start recordings or reset the timer.
+
+The default buttons match the screenshot's existing collections: **Celebrity Masqrayd**, **Criminal Masqrayd**, **Political Masqrayd**, and **Masqrayd-Mayhem**. Right-click > **Collections shown** to choose any existing collections. Names come directly from OBS; missing or renamed collections stay disabled until you update that selection. Right-click > **Button columns** selects one, two, or four columns; text scales to fit.
+
+To group it, use **Broadcast Stack > Panels > Include Scene Collections**. Detach returns it to its own window. Standalone options include always on top, borderless mode, open with OBS, and Ctrl+drag. While attached, window movement and appearance belong to the stack. This is a separate DLL included in the coordinated package; the timer/stack plugin is updated to recognize it.
+
+OBS loads every scene and asset from the selected collection. Keep equivalent camera scenes/sources in each collection if Camera Pop-Out should reconnect to the same selected source name; Camera Pop-Out's existing Open with OBS behavior controls reconnection. Assets already missing in a collection still need their paths repaired in OBS. The new panel does not repair broken collection files or rename collections.
 
 ## Broadcast controls
 
