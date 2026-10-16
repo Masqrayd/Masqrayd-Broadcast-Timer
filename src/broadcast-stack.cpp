@@ -139,10 +139,13 @@ void BroadcastStack::scan() {
         auto panel = static_cast<Panel>(i); auto &slot = slots_[i];
         if (!slot.wanted) continue;
         if (panel == Camera) {
+            if (camera_->attached()) camera_->synchronize();
             if (!camera_->attached() && providers_.camera) {
                 camera_->detach(false);
                 auto native = providers_.camera();
-                if (native && camera_->attach(native)) { slot.placeholder->hide(); camera_->show(); }
+                if (native && camera_->attach(native)) {
+                    slot.placeholder->hide(); camera_->show(); slot.layout->activate(); camera_->synchronize();
+                }
                 else { camera_->hide(); slot.placeholder->show(); }
             }
         } else if (!slot.widget && providers_.qtPanel) {

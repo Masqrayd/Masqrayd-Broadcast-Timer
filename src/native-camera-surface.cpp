@@ -17,6 +17,8 @@ bool isCamera(HWND window) {
 #endif
 NativeCameraSurface::NativeCameraSurface(QWidget *parent) : QWidget(parent) {
     setMinimumSize(160, 90); setAttribute(Qt::WA_NativeWindow);
+    fitLater_.setSingleShot(true);
+    connect(&fitLater_, &QTimer::timeout, this, &NativeCameraSurface::fit);
 }
 NativeCameraSurface::~NativeCameraSurface() { detach(false); }
 std::uintptr_t NativeCameraSurface::findCamera() {
@@ -58,12 +60,13 @@ bool NativeCameraSurface::attach(std::uintptr_t native) {
     }
     camera_ = native;
     SetWindowPos(window, nullptr, 0, 0, 1, 1, SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE);
-    fit(); ShowWindow(window, SW_SHOW); return true;
+    requestFit(); ShowWindow(window, SW_SHOW); return true;
 #else
     Q_UNUSED(native); return false;
 #endif
 }
 void NativeCameraSurface::detach(bool show) {
+    fitLater_.stop();
 #ifdef _WIN32
     if (attached()) {
         auto window = reinterpret_cast<HWND>(camera_);
@@ -83,10 +86,24 @@ void NativeCameraSurface::detach(bool show) {
 void NativeCameraSurface::fit() {
 #ifdef _WIN32
     if (attached()) {
-        RECT r{}; GetClientRect(reinterpret_cast<HWND>(winId()), &r);
-        SetWindowPos(reinterpret_cast<HWND>(camera_), nullptr, 0, 0, std::max<LONG>(1, r.right), std::max<LONG>(1, r.bottom), SWP_NOZORDER | SWP_NOACTIVATE);
+        auto host = reinterpret_cast<HWND>(winId()); auto camera = reinterpret_cast<HWND>(camera_);
+        RECT r{}, current{};
+        if (!GetClientRect(host, &r) || !GetClientRect(camera, &current)) return;
+        POINT origin{0, 0}; ClientToScreen(camera, &origin); ScreenToClient(host, &origin);
+        const LONG width = std::max<LONG>(1, r.right), height = std::max<LONG>(1, r.bottom);
+        // Polls normally do nothing. Only send a resize when the actual child
+        // bounds differ, so OBS's renderer is not resized repeatedly.
+        if (current.right == width && current.bottom == height && origin.x == 0 && origin.y == 0) return;
+        SetWindowPos(camera, nullptr, 0, 0, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
     }
 #endif
 }
-void NativeCameraSurface::resizeEvent(QResizeEvent *event) { QWidget::resizeEvent(event); fit(); }
-void NativeCameraSurface::showEvent(QShowEvent *event) { QWidget::showEvent(event); fit(); }
+void NativeCameraSurface::synchronize() { fit(); }
+void NativeCameraSurface::requestFit() {
+    fit();
+    // Qt can deliver resize/show before its native client rectangle and saved
+    // splitter layout have settled. Recheck on the next event-loop turn.
+    fitLater_.start(0);
+}
+void NativeCameraSurface::resizeEvent(QResizeEvent *event) { QWidget::resizeEvent(event); requestFit(); }
+void NativeCameraSurface::showEvent(QShowEvent *event) { QWidget::showEvent(event); requestFit(); }

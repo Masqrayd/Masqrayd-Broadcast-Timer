@@ -34,7 +34,7 @@ static void frontendEvent(enum obs_frontend_event event, void *) {
 }
 
 bool obs_module_load(void) {
-    blog(LOG_INFO, "[Masqrayd Broadcast Timer] Loading version 1.1.1");
+    blog(LOG_INFO, "[Masqrayd Broadcast Timer] Loading version 1.1.2");
     return true;
 }
 

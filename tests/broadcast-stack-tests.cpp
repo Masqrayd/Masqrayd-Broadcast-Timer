@@ -21,6 +21,17 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+static int cameraResizeEvents = 0;
+static LRESULT CALLBACK testCameraProc(HWND window, UINT message, WPARAM wp, LPARAM lp) {
+    if (message == WM_SIZE) ++cameraResizeEvents;
+    return DefWindowProcW(window, message, wp, lp);
+}
+static bool fillsParent(HWND camera) {
+    HWND host = GetParent(camera); RECT child{}, parent{};
+    if (!host || !GetClientRect(camera, &child) || !GetClientRect(host, &parent)) return false;
+    POINT origin{0, 0}; ClientToScreen(camera, &origin); ScreenToClient(host, &origin);
+    return child.right == parent.right && child.bottom == parent.bottom && origin.x == 0 && origin.y == 0;
+}
 #endif
 static int checks = 0;
 static void check(bool ok, const char *message) {
@@ -131,7 +142,7 @@ int main(int argc, char **argv) {
     check(timer.isWindow() && !timer.property("masqraydStacked").toBool(), "Destroying group does not destroy its plugins");
 #ifdef _WIN32
     // Exercise actual HWND reparenting, pixel resize and restoration on Windows.
-    WNDCLASSW wc{}; wc.hInstance = GetModuleHandleW(nullptr); wc.lpfnWndProc = DefWindowProcW;
+    WNDCLASSW wc{}; wc.hInstance = GetModuleHandleW(nullptr); wc.lpfnWndProc = testCameraProc;
     wc.lpszClassName = L"MasqraydCameraPopoutNativeV1";
     check(RegisterClassW(&wc) != 0, "Native camera test class registered");
     HWND camera = CreateWindowExW(WS_EX_APPWINDOW, wc.lpszClassName, L"Test camera", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
@@ -141,9 +152,11 @@ int main(int argc, char **argv) {
     const auto style = GetWindowLongPtrW(camera, GWL_STYLE); const auto ex = GetWindowLongPtrW(camera, GWL_EXSTYLE);
     {
         QWidget host; auto *hostLayout = new QVBoxLayout(&host); auto *surface = new NativeCameraSurface(&host); hostLayout->addWidget(surface);
-        host.resize(400, 320); host.show(); app.processEvents();
+        host.resize(400, 320);
         check(NativeCameraSurface::findCamera() == reinterpret_cast<std::uintptr_t>(camera), "Discovery matches only known current-process camera");
-        check(surface->attach(reinterpret_cast<std::uintptr_t>(camera)), "Native camera attaches"); app.processEvents();
+        check(surface->attach(reinterpret_cast<std::uintptr_t>(camera)), "Native camera attaches before host layout is shown");
+        host.show(); app.processEvents(); app.processEvents();
+        check(fillsParent(camera), "Deferred fit fills native pane after initial show and layout settle");
         check(GetParent(camera) == reinterpret_cast<HWND>(surface->winId()), "Camera shares the group's native parent");
         check(IsWindow(camera) && (GetWindowLongPtrW(camera, GWL_STYLE) & WS_CHILD), "Native window is retained as a child");
         host.resize(550, 400); app.processEvents();
@@ -160,11 +173,33 @@ int main(int argc, char **argv) {
         BroadcastStack group(dir.filePath("native-stack.ini"), nativeProviders);
         group.showStack(); group.setIncluded(BroadcastStack::Camera, true); app.processEvents();
         check(group.isAttached(BroadcastStack::Camera), "Broadcast Stack adopts real native camera");
-        selectMenu(group, "stackAlwaysOnTop");
-        check(IsWindow(camera) && group.isAttached(BroadcastStack::Camera), "Changing group topmost preserves native camera handle");
-        selectMenu(group, "stackBorderless");
-        check(IsWindow(camera) && group.isAttached(BroadcastStack::Camera), "Changing group border preserves native camera handle");
-        group.setIncluded(BroadcastStack::Camera, false); app.processEvents();
+        check(fillsParent(camera), "First stack attachment fills the camera pane");
+        HWND attachedParent = GetParent(camera);
+        // Reproduce the startup symptom without changing the container size.
+        // A late native resize must recover through the normal stack scan.
+        SetWindowPos(camera, nullptr, 0, 0, 160, 90, SWP_NOZORDER | SWP_NOACTIVATE);
+        check(!fillsParent(camera), "Fixture reproduces a small camera inside a larger pane");
+        group.scan();
+        check(fillsParent(camera) && GetParent(camera) == attachedParent, "Startup size mismatch repairs without detaching the camera");
+        const int settledResizeCount = cameraResizeEvents;
+        for (int i = 0; i < 10; ++i) group.scan();
+        check(cameraResizeEvents == settledResizeCount, "Already-correct camera is not repeatedly resized by polling");
+        group.savePreferences(); group.shutdown();
+        {
+            BroadcastStack restoredGroup(dir.filePath("native-stack.ini"), nativeProviders);
+            check(restoredGroup.included(BroadcastStack::Camera), "Saved startup layout retains camera membership");
+            restoredGroup.showStack(); app.processEvents(); app.processEvents(); restoredGroup.scan();
+            check(restoredGroup.isAttached(BroadcastStack::Camera) && fillsParent(camera), "Saved stack starts with camera filling its pane");
+            restoredGroup.shutdown();
+        }
+        // Continue existing frame-change and detach checks on the same HWND.
+        BroadcastStack freshGroup(dir.filePath("native-fresh-stack.ini"), nativeProviders);
+        freshGroup.showStack(); freshGroup.setIncluded(BroadcastStack::Camera, true); app.processEvents();
+        selectMenu(freshGroup, "stackAlwaysOnTop");
+        check(IsWindow(camera) && freshGroup.isAttached(BroadcastStack::Camera), "Changing group topmost preserves native camera handle");
+        selectMenu(freshGroup, "stackBorderless");
+        check(IsWindow(camera) && freshGroup.isAttached(BroadcastStack::Camera), "Changing group border preserves native camera handle");
+        freshGroup.setIncluded(BroadcastStack::Camera, false); app.processEvents();
         check(GetParent(camera) == nullptr && IsWindowVisible(camera), "Group detach returns visible native camera");
         check(surface->attach(reinterpret_cast<std::uintptr_t>(camera)), "Native camera can attach again after group detach");
         DestroyWindow(camera); surface->detach(false);
