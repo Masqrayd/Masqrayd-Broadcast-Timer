@@ -1,12 +1,12 @@
 # Masqrayd Broadcast Stack + Timer — Windows quick start
 
-1. Download **Masqrayd-Broadcast-Stack-1.1.2-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
+1. Download **Masqrayd-Broadcast-Stack-1.2.0-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
 2. Right-click the downloaded ZIP and choose **Extract All**.
 3. Close OBS completely.
 4. Open the extracted folder, double-click **INSTALL.cmd**, and accept the Windows administrator prompt. No Python, CMake, or Visual Studio installation is needed.
 5. Open OBS. For the group, choose **Tools > Masqrayd Broadcast Stack**. The normal timer remains available under **Tools > Masqrayd Broadcast Timer**.
 
-The ZIP updates the camera, Scene Vault/Scene Controller, and timer together so they can attach safely. Their saved source, crop, scenes, durations, and preferences are retained. The installer backs up existing DLL directories outside OBS's plugin scan folder and rolls them back if copying fails.
+The ZIP updates the camera, Scene Vault/Scene Controller, timer, and Scene Collections together so they can attach safely. Their saved source, crop, scenes, durations, and preferences are retained. The installer backs up existing DLL directories outside OBS's plugin scan folder and rolls them back if copying fails.
 
 The package targets OBS Studio **32.2.2, Windows x64**. It has not been tested on other OBS versions or architectures. It uses OBS's own Qt libraries; do not copy Qt DLLs into OBS.
 
@@ -14,7 +14,7 @@ The package targets OBS Studio **32.2.2, Windows x64**. It has not been tested o
 
 1. Open your camera through **Tools > Camera Pop-Out Native** and choose your finished OBS camera scene/source as usual.
 2. Open **Tools > Masqrayd Broadcast Stack**.
-3. Click **Panels** and check **Include Camera**, **Include Scene Controller**, and **Include Timer** as desired. The controller can be opened for you when you choose it. A camera that is not open yet displays a waiting section and connects after you open it.
+3. Click **Panels** and check **Include Camera**, **Include Scene Controller**, **Include Timer**, and **Include Scene Collections** as desired. The controller can be opened for you when you choose it. A camera that is not open yet displays a waiting section and connects after you open it.
 4. Drag the stack header to move all attached panels together. Drag the dividers to change individual section heights; drag outside edges/corners to resize the group.
 5. Click **Detach** on a section to put it back into its own window. Other sections remain grouped. You can also uncheck that panel in the Panels menu.
 
@@ -24,7 +24,19 @@ The stack is optional and does not open automatically until you enable **Open st
 
 Each plugin keeps its own functional right-click menu while attached, including story navigation and camera source/crop controls. Individual window move/resize/topmost controls are disabled while attached; use the group's controls instead. Detaching restores the original window flags and standalone position.
 
-The stack recognizes only the native Masqrayd Camera Pop-Out plugin, the Masqrayd Scene Controller, and the Masqrayd timer. It does not attach an OBS projector or an older Python camera window.
+The stack recognizes only the native Masqrayd Camera Pop-Out plugin, the Masqrayd Scene Controller, the Masqrayd timer, and Masqrayd Scene Collections. It does not attach an OBS projector or an older Python camera window.
+
+## Switch your channel collection
+
+1. Open **Tools > Masqrayd Scene Collections**, or choose **Panels > Include Scene Collections** in Broadcast Stack.
+2. Click **Celebrity Masqrayd**, **Criminal Masqrayd**, **Political Masqrayd**, or **Masqrayd-Mayhem**. Gold shows the collection actually active in OBS.
+3. Right-click the collection panel > **Collections shown** to choose different collections. Its labels use your exact OBS names. Uncheck old unavailable names and check their replacements after a rename.
+4. Choose **Button columns > 1, 2, or 4** to set the arrangement. Text shrinks/wraps inside the buttons when you resize.
+5. For a standalone window, right-click for **Always on top**, **Borderless window**, and **Open with OBS**. Drag the heading or Ctrl+drag a button to move it; drag edges to resize. In the stack, use its header/dividers and **Detach**.
+
+The panel loads an entire existing collection through OBS's normal collection-switch operation. The OBS profile remains selected. It neither starts nor stops a recording and does not reset your timer; loading a collection can briefly interrupt the picture while its sources load. Its highlight also updates when you change collections from OBS's menu. An unsuccessful change displays a message and retains the real active highlight.
+
+For the camera to reconnect across channels, keep the selected camera source/scene name available in each collection and enable the camera plugin's existing automatic-open option. Missing assets and damaged collection files still need to be repaired in OBS.
 
 ## During a broadcast
 
@@ -65,7 +77,7 @@ The timer does not switch OBS scenes, pause recording, or put itself into a vide
 
 ## Uninstall
 
-Close OBS, then run **UNINSTALL.cmd**. This removes the timer and its Broadcast Stack window. The camera and Scene Vault plugins remain usable separately. Saved preferences remain in OBS's plugin configuration folder.
+Close OBS, then run **UNINSTALL.cmd**. This removes the timer and its Broadcast Stack window. The camera, Scene Vault, and Scene Collections plugins remain usable separately. To remove Scene Collections too, delete its `masqrayd-scene-collections` plugin folder after closing OBS. Saved preferences remain in OBS's plugin configuration folder.
 
 ## If it doesn't appear
 

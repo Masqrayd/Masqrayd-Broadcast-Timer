@@ -22,7 +22,7 @@ static bool exiting = false;
 MODULE_EXPORT const char *obs_module_name(void) { return "Masqrayd Broadcast Timer"; }
 MODULE_EXPORT const char *obs_module_author(void) { return "Masqrayd"; }
 MODULE_EXPORT const char *obs_module_description(void) {
-    return "Story/break timer and optional Broadcast Stack for the camera, scene controller and timer.";
+    return "Story/break timer and optional Broadcast Stack for the camera, scene controller, timer and scene collections.";
 }
 
 static void frontendEvent(enum obs_frontend_event event, void *) {
@@ -34,7 +34,7 @@ static void frontendEvent(enum obs_frontend_event event, void *) {
 }
 
 bool obs_module_load(void) {
-    blog(LOG_INFO, "[Masqrayd Broadcast Timer] Loading version 1.1.2");
+    blog(LOG_INFO, "[Masqrayd Broadcast Timer] Loading version 1.2.0");
     return true;
 }
 
@@ -51,8 +51,8 @@ void obs_module_post_load(void) {
     BroadcastStack::Providers providers;
     providers.qtPanel = [](BroadcastStack::Panel panel) -> QWidget * {
         if (panel == BroadcastStack::Timer) return timerWindow;
-        if (panel == BroadcastStack::Controller) for (auto *widget : QApplication::allWidgets())
-            if (widget->objectName() == "masqraydSceneController") return widget;
+        if (panel == BroadcastStack::Controller || panel == BroadcastStack::Collections) for (auto *widget : QApplication::allWidgets())
+            if (widget->objectName() == (panel == BroadcastStack::Controller ? "masqraydSceneController" : "masqraydSceneCollections")) return widget;
         return nullptr;
     };
     providers.camera = &NativeCameraSurface::findCamera;
@@ -64,7 +64,8 @@ void obs_module_post_load(void) {
         for (auto *action : main->findChildren<QAction *>()) {
             QString text = action->text(); text.remove('&');
             if ((panel == BroadcastStack::Controller && action->objectName() == "masqraydSceneControllerAction") ||
-                (panel == BroadcastStack::Camera && text == "Camera Pop-Out Native")) { action->trigger(); break; }
+                (panel == BroadcastStack::Camera && text == "Camera Pop-Out Native") ||
+                (panel == BroadcastStack::Collections && action->objectName() == "masqraydSceneCollectionsAction")) { action->trigger(); break; }
         }
     };
     stackWindow = new BroadcastStack(QFileInfo(config).dir().filePath("broadcast-stack.ini"), providers);

@@ -51,23 +51,24 @@ jobs:
           if (!(Test-Path dist/masqrayd-broadcast-timer/bin/64bit/masqrayd-broadcast-timer.dll)) { throw 'Compiled DLL missing' }
           if (!(Test-Path dist/scene-vault/bin/64bit/scene-vault.dll)) { throw 'Scene controller DLL missing' }
           if (!(Test-Path dist/camera-popout-native/bin/64bit/camera-popout-native.dll)) { throw 'Camera DLL missing' }
+          if (!(Test-Path dist/masqrayd-scene-collections/bin/64bit/masqrayd-scene-collections.dll)) { throw 'Scene collections DLL missing' }
       - name: Verify installer upgrade in an isolated test directory
         shell: pwsh
         run: |
           $fixture = Join-Path $env:RUNNER_TEMP 'broadcast-stack-install-test'
-          foreach ($name in @('masqrayd-broadcast-timer','scene-vault','camera-popout-native')) {
+          foreach ($name in @('masqrayd-broadcast-timer','scene-vault','camera-popout-native','masqrayd-scene-collections')) {
             New-Item -ItemType Directory -Path (Join-Path $fixture $name) -Force | Out-Null
             Set-Content (Join-Path $fixture "$name/old-version.txt") 'prior version'
           }
           & ./dist/Install-BroadcastStack.ps1 -PluginRoot $fixture -NoPause
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          foreach ($name in @('masqrayd-broadcast-timer','scene-vault','camera-popout-native')) {
+          foreach ($name in @('masqrayd-broadcast-timer','scene-vault','camera-popout-native','masqrayd-scene-collections')) {
             if (!(Test-Path (Join-Path $fixture "$name/bin/64bit/$name.dll"))) { throw "Upgrade failed: $name" }
             if (Test-Path (Join-Path $fixture "$name/old-version.txt")) { throw "Old plugin directory was not backed up: $name" }
           }
       - name: Downloadable Windows package
         uses: actions/upload-artifact@v4
         with:
-          name: Masqrayd-Broadcast-Stack-1.1.2-Windows-x64
+          name: Masqrayd-Broadcast-Stack-1.2.0-Windows-x64
           path: dist/
           if-no-files-found: error
