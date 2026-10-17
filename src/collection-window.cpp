@@ -1,4 +1,5 @@
 #include "collection-window.hpp"
+#include "fit-text-label.hpp"
 #include <QAction>
 #include <QApplication>
 #include <QCloseEvent>
@@ -21,10 +22,10 @@ class CollectionButton : public QPushButton {
 public:
     CollectionButton(const QString &name, QWidget *parent) : QPushButton(name, parent) {
         setCheckable(true); setCursor(Qt::PointingHandCursor);
-        setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding); setMinimumSize(30, 28);
+        setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding); setMinimumSize(24, 20);
     }
     QSize sizeHint() const override { return {1, 1}; }
-    QSize minimumSizeHint() const override { return {30, 28}; }
+    QSize minimumSizeHint() const override { return {24, 20}; }
     void paintEvent(QPaintEvent *) override {
         QStyleOptionButton option; initStyleOption(&option); option.text.clear();
         QPainter p(this); style()->drawControl(QStyle::CE_PushButton, &option, &p, this);
@@ -43,7 +44,7 @@ public:
 CollectionWindow::CollectionWindow(const QString &file, Backend backend, QWidget *parent)
     : QDialog(parent), prefs_(file, QSettings::IniFormat), backend_(std::move(backend)) {
     setObjectName("masqraydSceneCollections"); setWindowTitle("Masqrayd Scene Collections");
-    setModal(false); setMinimumSize(220, 150); resize(360, 235);
+    setModal(false); setMinimumSize(160, 80); resize(360, 235);
     topmost_ = prefs_.value("topmost", true).toBool(); borderless_ = prefs_.value("borderless", true).toBool();
     openWithOBS_ = prefs_.value("openWithOBS", false).toBool();
     columns_ = std::clamp(prefs_.value("columns", 2).toInt(), 1, 4);
@@ -53,12 +54,12 @@ CollectionWindow::CollectionWindow(const QString &file, Backend backend, QWidget
                   "QPushButton { background:#30303c; border:1px solid #555562; border-radius:5px; }"
                   "QPushButton:hover { background:#454553; } QPushButton:checked { background:#d6af52; border-color:#f4d88f; }"
                   "QPushButton:disabled { border-color:#41414b; } QPushButton:focus { border:2px solid #eeeef4; }");
-    auto *layout = new QVBoxLayout(this); layout->setContentsMargins(8, 8, 8, 8); layout->setSpacing(5);
-    heading_ = new QLabel("Scene Collections", this); heading_->setStyleSheet("font-weight:bold;");
-    heading_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred); layout->addWidget(heading_);
-    grid_ = new QGridLayout; grid_->setSpacing(5); layout->addLayout(grid_, 1);
-    status_ = new QLabel(this); status_->setWordWrap(true); status_->setMinimumHeight(28);
-    status_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred); layout->addWidget(status_);
+    auto *layout = new QVBoxLayout(this); layout->setContentsMargins(4, 4, 4, 4); layout->setSpacing(3);
+    heading_ = new FitTextLabel("Scene Collections", this); heading_->setStyleSheet("font-weight:bold;");
+    heading_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding); layout->addWidget(heading_, 1);
+    grid_ = new QGridLayout; grid_->setSpacing(3); layout->addLayout(grid_, 4);
+    status_ = new FitTextLabel(this);
+    status_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding); layout->addWidget(status_, 1);
     for (auto *w : {static_cast<QWidget *>(this), static_cast<QWidget *>(heading_), static_cast<QWidget *>(status_)}) {
         w->setMouseTracking(true); w->installEventFilter(this);
     }

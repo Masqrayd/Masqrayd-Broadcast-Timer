@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Masqrayd/Scene-Vault
-          ref: ce0642409d8d0154a2a41eab07278b9826b406a2
+          ref: 7a2b1babeb708a5869a4cd8d6e5ca27f7833607c
           path: _partners/controller
       - name: Configure native plugin for OBS 32.2.2
         run: cmake --preset windows-x64 -DBUILD_TESTING=ON
@@ -69,6 +69,6 @@ jobs:
       - name: Downloadable Windows package
         uses: actions/upload-artifact@v4
         with:
-          name: Masqrayd-Broadcast-Stack-1.2.0-Windows-x64
+          name: Masqrayd-Broadcast-Stack-1.2.1-Windows-x64
           path: dist/
           if-no-files-found: error

@@ -4,7 +4,7 @@ option(BROADCAST_TIMER_UI_ONLY "Build GUI tests without OBS" OFF)
 if(NOT BROADCAST_TIMER_SYSTEM_BUILD AND NOT BROADCAST_TIMER_UI_ONLY)
   include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake" NO_POLICY_SCOPE)
 endif()
-project(masqrayd-broadcast-timer VERSION 1.2.0 LANGUAGES C CXX)
+project(masqrayd-broadcast-timer VERSION 1.2.1 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(NOT BROADCAST_TIMER_SYSTEM_BUILD AND NOT BROADCAST_TIMER_UI_ONLY)
@@ -83,4 +83,18 @@ if(BUILD_TESTING)
   if(NOT WIN32)
     set_tests_properties(broadcast-stack PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
   endif()
+endif()
+
+# Optional Linux integration test against the exact controller shipped in the
+# coordinated Windows package. This exercises real Qt panels with a fake OBS frontend.
+set(BROADCAST_STACK_CONTROLLER_SOURCE "" CACHE PATH "Scene Vault source for combined UI tests")
+if(BUILD_TESTING AND NOT WIN32 AND BROADCAST_STACK_CONTROLLER_SOURCE)
+  add_executable(compact-stack-tests tests/compact-stack-tests.cpp src/broadcast-stack.cpp
+    src/native-camera-surface.cpp src/timer-window.cpp src/collection-window.cpp
+    "${BROADCAST_STACK_CONTROLLER_SOURCE}/src/scene-controller.cpp")
+  target_include_directories(compact-stack-tests PRIVATE src "${BROADCAST_STACK_CONTROLLER_SOURCE}/src"
+    $<TARGET_PROPERTY:OBS::obs-frontend-api,INTERFACE_INCLUDE_DIRECTORIES>)
+  target_link_libraries(compact-stack-tests PRIVATE OBS::libobs Qt6::Core Qt6::Widgets)
+  add_test(NAME compact-stack COMMAND compact-stack-tests)
+  set_tests_properties(compact-stack PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()

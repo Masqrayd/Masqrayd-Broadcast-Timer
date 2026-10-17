@@ -11,10 +11,16 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - name: Scene controller used in coordinated package
+        uses: actions/checkout@v4
+        with:
+          repository: Masqrayd/Scene-Vault
+          ref: 7a2b1babeb708a5869a4cd8d6e5ca27f7833607c
+          path: _partners/controller
       - name: Install Qt and OBS development packages
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build qt6-base-dev libobs-dev
       - name: Build plugin and test executables
-        run: cmake -S . -B build-tests -G Ninja -DBROADCAST_TIMER_SYSTEM_BUILD=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug && cmake --build build-tests --parallel
+        run: cmake -S . -B build-tests -G Ninja -DBROADCAST_TIMER_SYSTEM_BUILD=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug -DBROADCAST_STACK_CONTROLLER_SOURCE=$PWD/_partners/controller && cmake --build build-tests --parallel
       - name: Check timing, controls, resizing and saved settings
         run: ctest --test-dir build-tests --output-on-failure
       - name: Render a timer preview

@@ -157,9 +157,15 @@ void BroadcastStack::scan() {
     }
 }
 void BroadcastStack::showStack() {
+    const bool firstShow = !activated_;
+    const QByteArray savedSplit = firstShow ? prefs_.value("splitter").toByteArray() : QByteArray();
     activated_ = true; ensureOnScreen(); showNormal();
     if (providers_.open) for (int i = 1; i < PanelCount; ++i) if (slots_[i].wanted && !slots_[i].widget) providers_.open(static_cast<Panel>(i));
-    scan(); raise(); activateWindow();
+    scan();
+    // Restore compact sizes after the real panels replace the placeholders;
+    // placeholder minimums must not inflate a saved compact section at startup.
+    if (firstShow && !savedSplit.isEmpty()) splitter_->restoreState(savedSplit);
+    raise(); activateWindow();
 }
 void BroadcastStack::setHorizontal(bool horizontal) {
     splitter_->setOrientation(horizontal ? Qt::Horizontal : Qt::Vertical);

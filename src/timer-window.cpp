@@ -14,6 +14,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QProgressBar>
+#include <QResizeEvent>
 #include <QPushButton>
 #include <QScreen>
 #include <QSpinBox>
@@ -85,7 +86,7 @@ public:
 TimerWindow::TimerWindow(const QString &settingsFile, QWidget *parent, std::function<qint64()> clock)
     : QDialog(parent), prefs_(settingsFile, QSettings::IniFormat), clock_(clock ? clock : monotonicNow) {
     setObjectName("MasqraydBroadcastTimer"); setWindowTitle("Masqrayd Broadcast Timer");
-    setModal(false); setMinimumSize(220, 220); resize(420, 355);
+    setModal(false); setMinimumSize(160, 110); resize(420, 355);
     storySeconds_ = std::clamp(prefs_.value("storySeconds", 600).toInt(), 1, 86399);
     breakSeconds_ = std::clamp(prefs_.value("breakSeconds", 300).toInt(), 1, 86399);
     warningSeconds_ = std::clamp(prefs_.value("warningSeconds", 30).toInt(), 0, 86400);
@@ -227,6 +228,18 @@ void TimerWindow::showTimer() {
     ensureOnScreen(); showNormal(); raise(); activateWindow();
 }
 void TimerWindow::shutdown() { shuttingDown_ = true; ticker_.stop(); savePreferences(); hide(); }
+void TimerWindow::resizeEvent(QResizeEvent *event) {
+    QDialog::resizeEvent(event);
+    // Keep the useful space proportional to height, including the whitespace.
+    // FitLabel/FitButton already fit their text to both dimensions.
+    const int gap = std::clamp(height() / 65, 1, 5);
+    layout()->setContentsMargins(std::clamp(width() / 35, 4, 12),
+                                std::clamp(height() / 35, 3, 10),
+                                std::clamp(width() / 35, 4, 12),
+                                std::clamp(height() / 35, 3, 10));
+    for (auto *box : findChildren<QBoxLayout *>()) box->setSpacing(gap);
+    progress_->setFixedHeight(std::clamp(height() / 65, 2, 5));
+}
 void TimerWindow::closeEvent(QCloseEvent *event) {
     savePreferences(); if (shuttingDown_) event->accept(); else { event->ignore(); hide(); }
 }
