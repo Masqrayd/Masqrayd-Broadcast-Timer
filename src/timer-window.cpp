@@ -311,7 +311,12 @@ void TimerWindow::showTimer() {
     if (property("masqraydStacked").toBool()) { window()->showNormal(); window()->raise(); window()->activateWindow(); return; }
     ensureOnScreen(); showNormal(); raise(); activateWindow();
 }
-void TimerWindow::shutdown() { shuttingDown_ = true; ticker_.stop(); savePreferences(); hide(); }
+void TimerWindow::shutdown() {
+    if (shuttingDown_) return;
+    shuttingDown_ = true;
+    setProperty("masqraydShuttingDown", true);
+    ticker_.stop(); savePreferences(); hide();
+}
 void TimerWindow::resizeEvent(QResizeEvent *event) {
     QDialog::resizeEvent(event);
     // Keep the useful space proportional to height, including the whitespace.

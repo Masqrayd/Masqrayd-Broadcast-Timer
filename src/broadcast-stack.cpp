@@ -4,10 +4,13 @@
 #include <QAbstractButton>
 #include <QCloseEvent>
 #include <QContextMenuEvent>
+#include <QDynamicPropertyChangeEvent>
 #include <QGuiApplication>
 #include <QLabel>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QMoveEvent>
+#include <QResizeEvent>
 #include <QScreen>
 #include <QScopedValueRollback>
 #include <QSplitter>
@@ -41,6 +44,10 @@ BroadcastStack::BroadcastStack(const QString &file, Providers providers)
     setObjectName("masqraydBroadcastStack"); setWindowTitle("Masqrayd Broadcast Stack");
     topmost_ = prefs_.value("topmost", true).toBool(); borderless_ = prefs_.value("borderless", true).toBool();
     openWithOBS_ = prefs_.value("openWithOBS", false).toBool();
+    startupGeometry_ = prefs_.value("geometry").toByteArray();
+    startupRect_ = prefs_.value("windowRect").toRect();
+    startupSplitter_ = prefs_.value("splitter").toByteArray();
+    startupPending_ = !startupGeometry_.isEmpty() || startupRect_.isValid();
     setMinimumSize(240, 150); resize(350, 750);
     setStyleSheet("QDialog#masqraydBroadcastStack { background:#1b1b23; border:1px solid #555562; }"
                   "QWidget[stackHeader=\"true\"] { background:#30303b; color:#eeeef4; }"
@@ -73,21 +80,27 @@ BroadcastStack::BroadcastStack(const QString &file, Providers providers)
         headerLayout->addWidget(label, 1); headerLayout->addWidget(detachButton); slot.layout->addWidget(header);
         slot.placeholder = new QLabel(QString("Open %1 in OBS, then it will connect here.\nUse Panels to remove this section.").arg(names[i]), slot.frame);
         slot.placeholder->setWordWrap(true); slot.placeholder->setAlignment(Qt::AlignCenter); slot.placeholder->setProperty("stackPlaceholder", true);
-        slot.placeholder->setMinimumSize(160, 90); slot.layout->addWidget(slot.placeholder, 1);
+        slot.placeholder->setMinimumSize(160, 1);
+        slot.placeholder->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored); slot.layout->addWidget(slot.placeholder, 1);
         if (panel == Camera) { camera_ = new NativeCameraSurface(slot.frame); camera_->hide(); slot.layout->addWidget(camera_, 1); }
         splitter_->addWidget(slot.frame); slot.frame->setVisible(slot.wanted);
         for (auto *target : {header, static_cast<QWidget *>(label)}) { target->setMouseTracking(true); target->installEventFilter(this); }
     }
     empty_ = new QLabel("Choose panels from the Panels menu.\nOnly the panels you choose will be grouped.", this);
     empty_->setAlignment(Qt::AlignCenter); empty_->setWordWrap(true); empty_->setProperty("stackPlaceholder", true); layout->addWidget(empty_, 1);
-    applyWindowFlags(); restoreGeometry(prefs_.value("geometry").toByteArray());
+    applyWindowFlags(); restoreGeometry(startupGeometry_);
+    if (startupRect_.isValid()) setGeometry(startupRect_);
     QStringList order = prefs_.value("order").toStringList();
     // Append newly introduced panels after saved panels during upgrades.
     for (const char *key : keys) if (!order.contains(key)) order << key;
     for (const QString &key : order) for (int i = 0; i < PanelCount; ++i) if (key == keys[i]) splitter_->insertWidget(splitter_->count(), slots_[i].frame);
     const bool horizontal = prefs_.value("horizontal", false).toBool(); splitter_->setOrientation(horizontal ? Qt::Horizontal : Qt::Vertical);
-    splitter_->restoreState(prefs_.value("splitter").toByteArray());
-    connect(splitter_, &QSplitter::splitterMoved, this, [this] { savePreferences(); });
+    splitter_->restoreState(startupSplitter_);
+    connect(splitter_, &QSplitter::splitterMoved, this, [this] { cancelStartupRestore(); savePreferences(); });
+    saveLater_.setSingleShot(true); saveLater_.setInterval(150);
+    connect(&saveLater_, &QTimer::timeout, this, &BroadcastStack::savePreferences);
+    restoreLater_.setSingleShot(true); restoreLater_.setInterval(0);
+    connect(&restoreLater_, &QTimer::timeout, this, &BroadcastStack::restoreStartupLayout);
     for (auto *target : {static_cast<QWidget *>(this), bar_, static_cast<QWidget *>(title_), static_cast<QWidget *>(empty_)}) {
         target->setMouseTracking(true); target->installEventFilter(this);
     }
@@ -100,6 +113,7 @@ bool BroadcastStack::included(Panel panel) const { return slots_[panel].wanted; 
 bool BroadcastStack::isAttached(Panel panel) const { return panel == Camera ? camera_->attached() : !slots_[panel].widget.isNull(); }
 void BroadcastStack::setIncluded(Panel panel, bool included) {
     auto &slot = slots_[panel]; if (slot.wanted == included) return;
+    cancelStartupRestore();
     slot.wanted = included;
     if (!included) detach(panel, true);
     slot.frame->setVisible(included); updateEmpty();
@@ -117,6 +131,7 @@ void BroadcastStack::attachQt(Panel panel, QWidget *widget) {
     widget->hide(); widget->setParent(slot.frame, Qt::Widget); slot.layout->addWidget(widget, 1);
     resetEmbeddedCursors(widget);
     widget->installEventFilter(this); slot.placeholder->hide(); widget->show();
+    if (startupPending_) restoreLater_.start();
 }
 void BroadcastStack::detach(Panel panel, bool show) {
     auto &slot = slots_[panel]; QScopedValueRollback<bool> guard(changing_, true);
@@ -145,33 +160,41 @@ void BroadcastStack::scan() {
             if (!camera_->attached() && providers_.camera) {
                 camera_->detach(false);
                 auto native = providers_.camera();
+                if (!native && providers_.open && slot.openRetry++ % 4 == 0) {
+                    providers_.open(panel); native = providers_.camera();
+                }
                 if (native && camera_->attach(native)) {
                     slot.placeholder->hide(); camera_->show(); slot.layout->activate(); camera_->synchronize();
+                    if (startupPending_) restoreLater_.start();
                 }
                 else { camera_->hide(); slot.placeholder->show(); }
             }
         } else if (!slot.widget && providers_.qtPanel) {
-            if (auto *widget = providers_.qtPanel(panel)) attachQt(panel, widget);
+            auto *widget = providers_.qtPanel(panel);
+            if (!widget && providers_.open && slot.openRetry++ % 4 == 0) {
+                providers_.open(panel); widget = providers_.qtPanel(panel);
+            }
+            if (widget) attachQt(panel, widget);
             else slot.placeholder->show();
         }
     }
 }
 void BroadcastStack::showStack() {
-    const bool firstShow = !activated_;
-    const QByteArray savedSplit = firstShow ? prefs_.value("splitter").toByteArray() : QByteArray();
+    if (shuttingDown_) return;
     activated_ = true; ensureOnScreen(); showNormal();
-    if (providers_.open) for (int i = 1; i < PanelCount; ++i) if (slots_[i].wanted && !slots_[i].widget) providers_.open(static_cast<Panel>(i));
+    if (providers_.open) for (int i = 0; i < PanelCount; ++i)
+        if (slots_[i].wanted && !isAttached(static_cast<Panel>(i))) providers_.open(static_cast<Panel>(i));
     scan();
-    // Restore compact sizes after the real panels replace the placeholders;
-    // placeholder minimums must not inflate a saved compact section at startup.
-    if (firstShow && !savedSplit.isEmpty()) splitter_->restoreState(savedSplit);
+    if (startupPending_) restoreStartupLayout();
     raise(); activateWindow();
 }
 void BroadcastStack::setHorizontal(bool horizontal) {
+    cancelStartupRestore();
     splitter_->setOrientation(horizontal ? Qt::Horizontal : Qt::Vertical);
     splitter_->setSizes({250, 230, 250, 180}); savePreferences();
 }
 void BroadcastStack::movePanel(Panel panel, int offset) {
+    cancelStartupRestore();
     const int index = splitter_->indexOf(slots_[panel].frame);
     splitter_->insertWidget(std::clamp(index + offset, 0, PanelCount - 1), slots_[panel].frame); savePreferences();
 }
@@ -180,20 +203,56 @@ void BroadcastStack::updateEmpty() {
     splitter_->setVisible(any); empty_->setVisible(!any);
 }
 void BroadcastStack::savePreferences() {
-    if (restoring_) return;
+    if (restoring_ || shuttingDown_) return;
     for (int i = 0; i < PanelCount; ++i) prefs_.setValue(QString("include/%1").arg(keys[i]), slots_[i].wanted);
     QStringList order;
     for (int n = 0; n < PanelCount; ++n) for (int i = 0; i < PanelCount; ++i) if (splitter_->widget(n) == slots_[i].frame) order << keys[i];
-    prefs_.setValue("order", order); prefs_.setValue("splitter", splitter_->saveState());
+    prefs_.setValue("order", order);
+    // Preserve the last complete layout while a saved panel is still loading.
+    if (!startupPending_) {
+        prefs_.setValue("splitter", splitter_->saveState());
+        prefs_.setValue("geometry", saveGeometry());
+        prefs_.setValue("windowRect", isMinimized() && normalGeometry().isValid() ? normalGeometry() : geometry());
+    }
     prefs_.setValue("horizontal", splitter_->orientation() == Qt::Horizontal);
-    prefs_.setValue("geometry", saveGeometry()); prefs_.setValue("topmost", topmost_);
+    prefs_.setValue("topmost", topmost_);
     prefs_.setValue("borderless", borderless_); prefs_.setValue("openWithOBS", openWithOBS_); prefs_.sync();
 }
 void BroadcastStack::shutdown() {
     if (shuttingDown_) return;
-    shuttingDown_ = true; poll_.stop(); savePreferences();
+    saveLater_.stop(); restoreLater_.stop(); poll_.stop();
+    savePreferences(); shuttingDown_ = true;
     for (int i = 0; i < PanelCount; ++i) detach(static_cast<Panel>(i), false);
     hide();
+}
+void BroadcastStack::cancelStartupRestore() {
+    if (applyingLayout_) return;
+    startupPending_ = false; restoreLater_.stop();
+}
+void BroadcastStack::restoreStartupLayout() {
+    if (!startupPending_ || shuttingDown_ || !activated_) return;
+    QScopedValueRollback<bool> guard(applyingLayout_, true);
+    if (startupRect_.isValid()) setGeometry(startupRect_);
+    else if (!startupGeometry_.isEmpty()) restoreGeometry(startupGeometry_);
+    ensureOnScreen(); layout()->activate();
+    if (!startupSplitter_.isEmpty()) splitter_->restoreState(startupSplitter_);
+    bool complete = true;
+    for (int i = 0; i < PanelCount; ++i)
+        if (slots_[i].wanted && !isAttached(static_cast<Panel>(i))) complete = false;
+    if (complete) { startupPending_ = false; saveLater_.start(); }
+    camera_->synchronize();
+}
+void BroadcastStack::moveEvent(QMoveEvent *event) {
+    QDialog::moveEvent(event);
+    if (restoring_ || applyingLayout_ || shuttingDown_ || !activated_) return;
+    if (event->spontaneous()) cancelStartupRestore();
+    saveLater_.start();
+}
+void BroadcastStack::resizeEvent(QResizeEvent *event) {
+    QDialog::resizeEvent(event);
+    if (restoring_ || applyingLayout_ || shuttingDown_ || !activated_) return;
+    if (event->spontaneous()) cancelStartupRestore();
+    saveLater_.start();
 }
 void BroadcastStack::applyWindowFlags() {
     // Qt may recreate native ancestors when window flags change. Remove the
@@ -242,6 +301,7 @@ void BroadcastStack::options(const QPoint &position) {
     border->setObjectName("stackBorderless");
     connect(border, &QAction::triggered, this, [this](bool checked) { borderless_ = checked; applyWindowFlags(); savePreferences(); });
     auto *open = menu.addAction("Open stack with OBS"); open->setCheckable(true); open->setChecked(openWithOBS_);
+    open->setObjectName("stackOpenWithOBS");
     connect(open, &QAction::triggered, this, [this](bool checked) { openWithOBS_ = checked; savePreferences(); });
     menu.addSeparator();
     menu.addAction("Detach all panels", this, [this] { for (int i = 0; i < PanelCount; ++i) setIncluded(static_cast<Panel>(i), false); });
@@ -251,16 +311,18 @@ void BroadcastStack::options(const QPoint &position) {
 bool BroadcastStack::eventFilter(QObject *object, QEvent *event) {
     if (!changing_ && !shuttingDown_) for (int i = 1; i < PanelCount; ++i) {
         if (object != slots_[i].widget.data()) continue;
+        if (event->type() == QEvent::DynamicPropertyChange &&
+            static_cast<QDynamicPropertyChangeEvent *>(event)->propertyName() == "masqraydShuttingDown" &&
+            slots_[i].widget->property("masqraydShuttingDown").toBool()) {
+            // A partner can receive OBS's early shutdown notification first.
+            // Snapshot the complete layout before it hides or destroys a panel.
+            shutdown(); return false;
+        }
         if (event->type() == QEvent::Close) {
             slots_[i].wanted = false; detach(static_cast<Panel>(i), false); slots_[i].frame->hide(); updateEmpty(); savePreferences(); return true;
         }
-        if (event->type() == QEvent::Hide && slots_[i].widget && slots_[i].widget->isHidden()) {
-            QTimer::singleShot(0, this, [this, i] {
-                if (!shuttingDown_ && slots_[i].widget && slots_[i].widget->isHidden()) {
-                    slots_[i].wanted = false; detach(static_cast<Panel>(i), false); slots_[i].frame->hide(); updateEmpty(); savePreferences();
-                }
-            });
-        }
+        // Hide can mean plugin shutdown, minimizing, or a temporary refresh.
+        // Only an explicit close/detach is allowed to remove saved membership.
         return QDialog::eventFilter(object, event);
     }
     if (event->type() == QEvent::Leave && !dragging_ && !edges_) {
@@ -277,6 +339,7 @@ bool BroadcastStack::eventFilter(QObject *object, QEvent *event) {
         if (local.y() < 6) edges |= Qt::TopEdge; else if (local.y() >= height() - 6) edges |= Qt::BottomEdge;
     }
     if (event->type() == QEvent::MouseButtonPress && mouse->button() == Qt::LeftButton) {
+        cancelStartupRestore();
         dragging_ = !edges; edges_ = edges; mouseStart_ = global; startRect_ = geometry(); grabMouse(); return true;
     }
     if (event->type() == QEvent::MouseMove && (dragging_ || edges_)) {

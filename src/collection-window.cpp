@@ -151,7 +151,12 @@ void CollectionWindow::showCollections() {
     if (!onScreen) if (auto *s = QGuiApplication::primaryScreen()) { resize(size().boundedTo(s->availableGeometry().size())); move(s->availableGeometry().center() - rect().center()); }
     showNormal(); raise(); activateWindow();
 }
-void CollectionWindow::shutdown() { if (shuttingDown_) return; shuttingDown_ = true; poll_.stop(); savePreferences(); hide(); }
+void CollectionWindow::shutdown() {
+    if (shuttingDown_) return;
+    shuttingDown_ = true;
+    setProperty("masqraydShuttingDown", true);
+    poll_.stop(); savePreferences(); hide();
+}
 void CollectionWindow::closeEvent(QCloseEvent *event) { savePreferences(); event->ignore(); hide(); }
 void CollectionWindow::reject() { close(); }
 void CollectionWindow::contextMenuEvent(QContextMenuEvent *event) {
