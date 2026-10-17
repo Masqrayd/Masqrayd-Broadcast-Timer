@@ -44,7 +44,7 @@
   },
   "name": "masqrayd-broadcast-timer",
   "displayName": "Masqrayd Broadcast Timer",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "author": "Masqrayd",
   "website": "https://github.com/Masqrayd/Masqrayd-Broadcast-Timer",
   "email": ""

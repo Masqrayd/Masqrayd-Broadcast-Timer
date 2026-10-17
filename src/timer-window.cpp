@@ -94,6 +94,11 @@ TimerWindow::TimerWindow(const QString &settingsFile, QWidget *parent, std::func
     sound_ = prefs_.value("sound", false).toBool(); use24Hour_ = prefs_.value("24hour", false).toBool();
     topmost_ = prefs_.value("topmost", true).toBool(); borderless_ = prefs_.value("borderless", true).toBool();
     openWithOBS_ = prefs_.value("openWithOBS", true).toBool();
+    for (int i = 0; i < 2; ++i) {
+        const QString key = i == 0 ? "recording" : "streaming";
+        showOutput_[i] = prefs_.value("outputs/show/" + key, i == 0).toBool();
+        autoStartOutput_[i] = prefs_.value("outputs/autoStart/" + key, true).toBool();
+    }
     setStyleSheet("QDialog#MasqraydBroadcastTimer { background:#17171e; border:1px solid #42424d; }"
                   "QPushButton { background:#30303c; border:1px solid #505060; border-radius:5px; }"
                   "QPushButton:hover { background:#444454; } QPushButton:pressed { background:#595968; }"
@@ -121,6 +126,15 @@ TimerWindow::TimerWindow(const QString &settingsFile, QWidget *parent, std::func
     next_ = new FitButton("Next Story", this); next_->setObjectName("nextStory");
     break_ = new FitButton("Take a Break", this); break_->setObjectName("takeBreak");
     segments->addWidget(next_, 1); segments->addWidget(break_, 1); layout->addLayout(segments, 3);
+    outputRow_ = new QWidget(this); outputRow_->setObjectName("obsOutputControls");
+    auto *outputs = new QHBoxLayout(outputRow_); outputs->setContentsMargins(0, 0, 0, 0); outputs->setSpacing(5);
+    for (int i = 0; i < 2; ++i) {
+        auto *button = new FitButton(i == 0 ? "Start Recording" : "Start Streaming", outputRow_);
+        button->setObjectName(i == 0 ? "startRecording" : "startStreaming");
+        button->setMinimumHeight(12); outputButtons_[i] = button; outputs->addWidget(button, 1);
+        connect(button, &QPushButton::clicked, this, [this, i] { requestOutput(static_cast<Output>(i)); });
+    }
+    layout->addWidget(outputRow_, 3);
     start_->setToolTip("Start or continue the current timer"); next_->setToolTip("Start a fresh story timer immediately");
     reset_->setToolTip("Reset the current timer without changing the story number. Right-click for story navigation and Restart from Story 1.");
     break_->setToolTip("Start a fresh break countdown immediately");
@@ -142,6 +156,70 @@ TimerWindow::TimerWindow(const QString &settingsFile, QWidget *parent, std::func
 TimerWindow::~TimerWindow() { savePreferences(); }
 qint64 TimerWindow::now() const { return clock_(); }
 bool TimerWindow::opensWithOBS() const { return openWithOBS_; }
+void TimerWindow::setOutputBackend(OutputBackend backend) {
+    outputBackend_ = std::move(backend);
+    for (int i = 0; i < 2; ++i) {
+        outputActive_[i] = outputBackend_.active && outputBackend_.active(static_cast<Output>(i));
+        outputBusy_[i] = outputRequested_[i] = false;
+    }
+    // Connecting the panel to an already active output must not restart a timer.
+    outputSessionLinked_ = outputActive_[0] || outputActive_[1];
+    refreshOutputButtons();
+}
+void TimerWindow::requestOutput(Output output) {
+    const int i = static_cast<int>(output);
+    if (shuttingDown_ || outputBusy_[i] || outputActive_[i] || !outputBackend_.start) return;
+    if (outputBackend_.active && outputBackend_.active(output)) return;
+    outputBusy_[i] = outputRequested_[i] = true;
+    outputRequestDeadline_[i] = now() + 10000;
+    refreshOutputButtons();
+    // Leave the button event before OBS can open dialogs or pump Qt events.
+    QTimer::singleShot(0, this, [this, output, i] {
+        if (shuttingDown_ || !outputRequested_[i]) return;
+        if (outputBackend_.active && outputBackend_.active(output)) {
+            outputRequested_[i] = outputBusy_[i] = false; refreshOutputButtons(); return;
+        }
+        if (outputBackend_.start) outputBackend_.start(output);
+    });
+}
+void TimerWindow::outputEvent(Output output, OutputPhase phase) {
+    if (shuttingDown_) return;
+    const int i = static_cast<int>(output);
+    const bool wasActive = outputActive_[i];
+    outputRequested_[i] = false;
+    outputBusy_[i] = phase == OutputPhase::Starting || phase == OutputPhase::Stopping;
+    if (phase == OutputPhase::Started) outputActive_[i] = true;
+    if (phase == OutputPhase::Stopped) outputActive_[i] = false;
+    if (phase == OutputPhase::Started && !wasActive && !outputSessionLinked_ && autoStartOutput_[i]) {
+        outputSessionLinked_ = true;
+        // Keep a running story intact, including when OBS auto-records a stream.
+        // A new session otherwise starts a fresh current-story timer.
+        if (state_.status != TimerState::Status::Running) {
+            state_.selectStory(std::max(1, state_.story), std::int64_t(storySeconds_) * 1000);
+            resetAlerts(); state_.start(now());
+        }
+    }
+    if (!outputActive_[0] && !outputActive_[1] && !outputBusy_[0] && !outputBusy_[1]) outputSessionLinked_ = false;
+    refresh();
+}
+void TimerWindow::refreshOutputButtons() {
+    const bool available = bool(outputBackend_.start);
+    outputRow_->setVisible(available && (showOutput_[0] || showOutput_[1]));
+    for (int i = 0; i < 2; ++i) {
+        if (outputRequested_[i] && now() >= outputRequestDeadline_[i]) {
+            outputRequested_[i] = outputBusy_[i] = false;
+        }
+        auto *button = outputButtons_[i];
+        button->setVisible(showOutput_[i]);
+        button->setEnabled(available && !shuttingDown_ && !outputActive_[i] && !outputBusy_[i]);
+        button->setText(outputBusy_[i] ? (outputActive_[i] ? "Stopping..." : "Starting...") :
+                        outputActive_[i] ? (i == 0 ? "Recording Active" : "Streaming Active") :
+                        i == 0 ? "Start Recording" : "Start Streaming");
+        button->setToolTip(outputActive_[i] ? "Already active in OBS. Use OBS controls to stop it." :
+            autoStartOutput_[i] ? "Start in OBS; the timer starts after OBS confirms success." :
+                                 "Start in OBS. Automatic timer start for this output is turned off.");
+    }
+}
 std::int64_t TimerWindow::duration() const { return std::int64_t(state_.segment == TimerState::Segment::Story ? storySeconds_ : breakSeconds_) * 1000; }
 void TimerWindow::resetAlerts() { warningSounded_ = false; endSounded_ = false; }
 void TimerWindow::nextStory() { state_.nextStory(now(), std::int64_t(storySeconds_) * 1000); resetAlerts(); refresh(); }
@@ -194,6 +272,7 @@ void TimerWindow::refresh() {
         else if (warning && !warningSounded_) { QApplication::beep(); warningSounded_ = true; }
     }
     for (auto *label : {heading_, digits_, clockLabel_, statusLabel_}) label->update();
+    refreshOutputButtons();
 }
 
 void TimerWindow::savePreferences() {
@@ -202,6 +281,11 @@ void TimerWindow::savePreferences() {
     prefs_.setValue("flash", flash_); prefs_.setValue("sound", sound_); prefs_.setValue("24hour", use24Hour_);
     prefs_.setValue("topmost", topmost_); prefs_.setValue("borderless", borderless_);
     prefs_.setValue("openWithOBS", openWithOBS_);
+    for (int i = 0; i < 2; ++i) {
+        const QString key = i == 0 ? "recording" : "streaming";
+        prefs_.setValue("outputs/show/" + key, showOutput_[i]);
+        prefs_.setValue("outputs/autoStart/" + key, autoStartOutput_[i]);
+    }
     if (!property("masqraydStacked").toBool()) prefs_.setValue("geometry", saveGeometry());
     prefs_.sync();
 }
@@ -252,6 +336,20 @@ void TimerWindow::contextMenuEvent(QContextMenuEvent *event) {
     menu.addAction("Restart from Story 1", this, [this] { selectStory(1); })->setObjectName("restartFromBeginning");
     menu.addSeparator();
     menu.addAction("Timer settings...", this, &TimerWindow::settingsDialog);
+    auto *outputs = menu.addMenu("OBS recording / streaming");
+    for (int i = 0; i < 2; ++i) {
+        auto *show = outputs->addAction(i == 0 ? "Show Start Recording button" : "Show Start Streaming button");
+        show->setObjectName(i == 0 ? "showRecordingButton" : "showStreamingButton");
+        show->setCheckable(true); show->setChecked(showOutput_[i]);
+        connect(show, &QAction::toggled, this, [this, i](bool value) { showOutput_[i] = value; refreshOutputButtons(); savePreferences(); });
+    }
+    outputs->addSeparator();
+    for (int i = 0; i < 2; ++i) {
+        auto *automatic = outputs->addAction(i == 0 ? "Start timer when recording starts" : "Start timer when streaming starts");
+        automatic->setObjectName(i == 0 ? "autoStartRecording" : "autoStartStreaming");
+        automatic->setCheckable(true); automatic->setChecked(autoStartOutput_[i]);
+        connect(automatic, &QAction::toggled, this, [this, i](bool value) { autoStartOutput_[i] = value; refreshOutputButtons(); savePreferences(); });
+    }
     auto *count = menu.addAction("Count up for stories"); count->setCheckable(true); count->setChecked(countUp_);
     menu.addSeparator();
     auto *top = menu.addAction("Always on top"); top->setCheckable(true); top->setChecked(topmost_);

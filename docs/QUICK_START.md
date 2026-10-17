@@ -1,6 +1,6 @@
 # Masqrayd Broadcast Stack + Timer — Windows quick start
 
-1. Download **Masqrayd-Broadcast-Stack-1.2.1-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
+1. Download **Masqrayd-Broadcast-Stack-1.3.0-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
 2. Right-click the downloaded ZIP and choose **Extract All**.
 3. Close OBS completely.
 4. Open the extracted folder, double-click **INSTALL.cmd**, and accept the Windows administrator prompt. No Python, CMake, or Visual Studio installation is needed.
@@ -87,7 +87,7 @@ Open **Help > Log Files > View Current Log** in OBS and search for `Masqrayd Bro
 
 Portable OBS installations may need the DLL copied to their own `obs-plugins\64bit` folder instead. The supplied installer targets the standard Windows OBS installation.
 
-## Compact panel heights (1.2.1)
+## Compact panel heights (1.2.1 and later)
 
 Drag the horizontal divider above or below Timer to make that section shorter.
 Timer digits, labels, button text, spacing and margins scale with the available
@@ -95,3 +95,26 @@ height. The timer body can shrink to 110 pixels (plus its stack header).
 Scene Collections can shrink to an 80-pixel body. Scene Controller rows and
 Studio/Send controls also scale with height. Use the freed room for the scene
 buttons. The stack remembers the section sizes; widening the window is optional.
+
+## Start recording or streaming with the timer (1.3.0)
+
+Right-click the timer > **OBS recording / streaming**. Check **Show Start
+Recording button**, **Show Start Streaming button**, or both. Uncheck both to
+hide the extra row. Recording-only is the default. The normal Start, Pause,
+Stop, Reset, Next Story and Take a Break controls remain available.
+
+**Start timer when recording starts** and **Start timer when streaming starts**
+are enabled by default. They also work when an output starts from OBS's own
+controls or a hotkey, even if its button is hidden or the timer is hidden.
+The timer waits for OBS to confirm the output has started successfully. A
+failed/cancelled request leaves the timer unchanged. Configure output settings
+and stop outputs using OBS; the timer's output buttons only start them.
+
+The first enabled output start in a session starts a fresh current-story timer
+if the timer is ready, paused or stopped. It preserves the story number. An
+already-running timer keeps its reading. Starting the other output while the
+session is active never restarts it or undoes a manual pause/reset. Once both
+outputs have stopped, the next output start can trigger a new session. Stopping
+an OBS output does not stop the timer, and timer Pause/Stop/Reset do not control
+recording or streaming. Automatic timer start can be disabled for either output
+independently. Button choices and automatic-start preferences are remembered.
