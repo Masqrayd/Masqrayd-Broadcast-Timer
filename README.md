@@ -6,7 +6,7 @@ Designed for **OBS Studio 32.2.2 on Windows x64**. No Python or separate launche
 
 ## Get the Windows download
 
-Open [Actions](https://github.com/Masqrayd/Masqrayd-Broadcast-Timer/actions), select a successful **Build Broadcast Timer for Windows** run, and download **Masqrayd-Broadcast-Stack-1.2.1-Windows-x64** under Artifacts. Extract the ZIP, close OBS, then run **INSTALL.cmd**. The GitHub **Code > Download ZIP** option contains source code and cannot be installed directly.
+Open [Actions](https://github.com/Masqrayd/Masqrayd-Broadcast-Timer/actions), select a successful **Build Broadcast Timer for Windows** run, and download **Masqrayd-Broadcast-Stack-1.3.0-Windows-x64** under Artifacts. Extract the ZIP, close OBS, then run **INSTALL.cmd**. The GitHub **Code > Download ZIP** option contains source code and cannot be installed directly.
 
 See [the quick-start guide](docs/QUICK_START.md) for installation, controls, window settings, and troubleshooting.
 
@@ -27,6 +27,16 @@ The default buttons match the screenshot's existing collections: **Celebrity Mas
 To group it, use **Broadcast Stack > Panels > Include Scene Collections**. Detach returns it to its own window. Standalone options include always on top, borderless mode, open with OBS, and Ctrl+drag. While attached, window movement and appearance belong to the stack. This is a separate DLL included in the coordinated package; the timer/stack plugin is updated to recognize it.
 
 OBS loads every scene and asset from the selected collection. Keep equivalent camera scenes/sources in each collection if Camera Pop-Out should reconnect to the same selected source name; Camera Pop-Out's existing Open with OBS behavior controls reconnection. Assets already missing in a collection still need their paths repaired in OBS. The new panel does not repair broken collection files or rename collections.
+
+## OBS start buttons and automatic timer start
+
+Right-click the timer > **OBS recording / streaming** to show Start Recording,
+Start Streaming, either, or both. Recording-only is shown by default. Automatic
+timer start for both outputs is enabled by default, including starts from OBS
+controls and hotkeys. The timer waits for confirmed success, preserves a running
+timer, and does not restart it when the second output begins. The regular timer
+controls remain independent. See [quick start](docs/QUICK_START.md) for behavior
+and the separate automatic-start settings.
 
 ## Broadcast controls
 

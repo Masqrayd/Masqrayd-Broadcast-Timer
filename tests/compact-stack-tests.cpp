@@ -51,7 +51,12 @@ static void check(bool value, const char *message) {
 static void settle() { for (int i = 0; i < 8; ++i) QApplication::processEvents(); }
 int main(int argc, char **argv) {
     QApplication app(argc, argv); QTemporaryDir dir; qint64 now = 1000;
+    {
+        QSettings prefs(dir.filePath("timer.ini"), QSettings::IniFormat);
+        prefs.setValue("outputs/show/streaming", true); prefs.sync();
+    }
     TimerWindow timer(dir.filePath("timer.ini"), nullptr, [&] { return now; });
+    timer.setOutputBackend({[](TimerWindow::Output) { return false; }, [](TimerWindow::Output) {}});
     SceneController controller(nullptr, [] { return QSet<QString>{}; }, dir.filePath("controller.ini"));
     CollectionWindow::Snapshot state{{"Celebrity Masqrayd", "Criminal Masqrayd", "Political Masqrayd", "Masqrayd-Mayhem"},
                                       "Celebrity Masqrayd", "Main Profile", false};
@@ -90,9 +95,9 @@ int main(int argc, char **argv) {
                   "each scene button is entirely within the visible viewport");
         }
         check(sceneCount == 5, "five production scenes retained");
-        for (const char *name : {"start", "pause", "stop", "reset", "nextStory", "takeBreak"}) {
+        for (const char *name : {"start", "pause", "stop", "reset", "nextStory", "takeBreak", "startRecording", "startStreaming"}) {
             auto *button = timer.findChild<QPushButton *>(name);
-            check(button && timer.rect().contains(button->geometry()) && button->height() >= 10,
+            check(button && timer.rect().contains(QRect(button->mapTo(&timer, QPoint()), button->size())) && button->height() >= 10,
                   "every timer control remains visible in compact mode");
         }
         timer.findChild<QPushButton *>("start")->click(); now += 3000;

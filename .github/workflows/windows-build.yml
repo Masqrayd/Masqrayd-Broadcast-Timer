@@ -69,6 +69,6 @@ jobs:
       - name: Downloadable Windows package
         uses: actions/upload-artifact@v4
         with:
-          name: Masqrayd-Broadcast-Stack-1.2.1-Windows-x64
+          name: Masqrayd-Broadcast-Stack-1.3.0-Windows-x64
           path: dist/
           if-no-files-found: error

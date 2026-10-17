@@ -10,6 +10,7 @@
 #include "timer-window.hpp"
 #include "broadcast-stack.hpp"
 #include "native-camera-surface.hpp"
+#include "obs-timer-events.hpp"
 
 OBS_DECLARE_MODULE()
 
@@ -30,11 +31,18 @@ static void frontendEvent(enum obs_frontend_event event, void *) {
         exiting = true;
         if (stackWindow) stackWindow->shutdown();
         if (timerWindow) timerWindow->shutdown();
+        return;
+    }
+    if (timerWindow && !exiting) {
+        const QPointer<TimerWindow> window = timerWindow;
+        QMetaObject::invokeMethod(window.data(), [window, event] {
+            if (window && !exiting) forwardTimerOutputEvent(*window, event);
+        }, Qt::AutoConnection);
     }
 }
 
 bool obs_module_load(void) {
-    blog(LOG_INFO, "[Masqrayd Broadcast Timer] Loading version 1.2.0");
+    blog(LOG_INFO, "[Masqrayd Broadcast Timer] Loading version 1.3.0");
     return true;
 }
 
@@ -48,6 +56,16 @@ void obs_module_post_load(void) {
         blog(LOG_ERROR, "[Masqrayd Broadcast Timer] Could not create settings directory"); return;
     }
     timerWindow = new TimerWindow(config, main);
+    timerWindow->setOutputBackend({
+        [](TimerWindow::Output output) {
+            return output == TimerWindow::Output::Recording ? obs_frontend_recording_active() : obs_frontend_streaming_active();
+        },
+        [](TimerWindow::Output output) {
+            if (exiting) return;
+            if (output == TimerWindow::Output::Recording) obs_frontend_recording_start();
+            else obs_frontend_streaming_start();
+        }
+    });
     BroadcastStack::Providers providers;
     providers.qtPanel = [](BroadcastStack::Panel panel) -> QWidget * {
         if (panel == BroadcastStack::Timer) return timerWindow;
