@@ -1,6 +1,6 @@
 # Masqrayd Broadcast Stack + Timer — Windows quick start
 
-1. Download **Masqrayd-Broadcast-Stack-1.3.0-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
+1. Download **Masqrayd-Broadcast-Stack-1.3.1-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
 2. Right-click the downloaded ZIP and choose **Extract All**.
 3. Close OBS completely.
 4. Open the extracted folder, double-click **INSTALL.cmd**, and accept the Windows administrator prompt. No Python, CMake, or Visual Studio installation is needed.
@@ -96,7 +96,7 @@ Scene Collections can shrink to an 80-pixel body. Scene Controller rows and
 Studio/Send controls also scale with height. Use the freed room for the scene
 buttons. The stack remembers the section sizes; widening the window is optional.
 
-## Start recording or streaming with the timer (1.3.0)
+## Start recording or streaming with the timer (1.3.0 and later)
 
 Right-click the timer > **OBS recording / streaming**. Check **Show Start
 Recording button**, **Show Start Streaming button**, or both. Uncheck both to
@@ -118,3 +118,17 @@ outputs have stopped, the next output start can trigger a new session. Stopping
 an OBS output does not stop the timer, and timer Pause/Stop/Reset do not control
 recording or streaming. Automatic timer start can be disabled for either output
 independently. Button choices and automatic-start preferences are remembered.
+
+## Restore the full stack when OBS restarts (1.3.1)
+
+Use **Panels** to select the sections you want, arrange and resize the stack,
+and enable **Open stack with OBS**. The stack remembers its position, outer
+size, orientation, panel order and each section's size. It saves the complete
+layout before plugins hide during OBS shutdown. Selected panels that load
+later are attached automatically without replacing the saved dimensions.
+Intentional detachment using **Detach** or unchecking a panel is still saved.
+
+If an older version already forgot Scene Collections, include it once after
+installing this update, arrange the stack, then close OBS normally. That layout
+will be restored on subsequent launches. A window whose monitor is no longer
+connected is moved back onto an available screen.

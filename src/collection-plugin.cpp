@@ -35,7 +35,7 @@ static void event(enum obs_frontend_event e, void *) {
     }
     if (panel && !exiting) QTimer::singleShot(0, panel, [] { if (panel && !exiting) panel->refresh(); });
 }
-bool obs_module_load(void) { blog(LOG_INFO, "[Masqrayd Scene Collections] Loading version 1.2.0"); return true; }
+bool obs_module_load(void) { blog(LOG_INFO, "[Masqrayd Scene Collections] Loading version 1.3.1"); return true; }
 void obs_module_post_load(void) {
     auto *main = static_cast<QMainWindow *>(obs_frontend_get_main_window()); if (!main) return;
     char *path = obs_module_config_path("collections.ini"); if (!path) return;

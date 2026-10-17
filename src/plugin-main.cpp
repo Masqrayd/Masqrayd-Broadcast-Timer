@@ -27,7 +27,7 @@ MODULE_EXPORT const char *obs_module_description(void) {
 }
 
 static void frontendEvent(enum obs_frontend_event event, void *) {
-    if (event == OBS_FRONTEND_EVENT_EXIT) {
+    if (event == OBS_FRONTEND_EVENT_SCRIPTING_SHUTDOWN || event == OBS_FRONTEND_EVENT_EXIT) {
         exiting = true;
         if (stackWindow) stackWindow->shutdown();
         if (timerWindow) timerWindow->shutdown();
@@ -42,7 +42,7 @@ static void frontendEvent(enum obs_frontend_event event, void *) {
 }
 
 bool obs_module_load(void) {
-    blog(LOG_INFO, "[Masqrayd Broadcast Timer] Loading version 1.3.0");
+    blog(LOG_INFO, "[Masqrayd Broadcast Timer] Loading version 1.3.1");
     return true;
 }
 

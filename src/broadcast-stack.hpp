@@ -36,6 +36,8 @@ protected:
     void closeEvent(QCloseEvent *) override;
     void contextMenuEvent(QContextMenuEvent *) override;
     bool eventFilter(QObject *, QEvent *) override;
+    void moveEvent(QMoveEvent *) override;
+    void resizeEvent(QResizeEvent *) override;
 private:
     struct Slot {
         bool wanted = false;
@@ -46,6 +48,7 @@ private:
         Qt::WindowFlags oldFlags;
         QByteArray oldGeometry;
         QRect oldRect;
+        int openRetry = 0;
     };
     void attachQt(Panel panel, QWidget *widget);
     void detach(Panel panel, bool show);
@@ -54,6 +57,8 @@ private:
     void movePanel(Panel panel, int offset);
     void options(const QPoint &position);
     void updateEmpty();
+    void restoreStartupLayout();
+    void cancelStartupRestore();
     QSettings prefs_;
     Providers providers_;
     std::array<Slot, PanelCount> slots_;
@@ -62,6 +67,10 @@ private:
     QWidget *bar_;
     QLabel *title_, *empty_;
     QTimer poll_;
+    QTimer saveLater_, restoreLater_;
+    QByteArray startupGeometry_, startupSplitter_;
+    QRect startupRect_;
+    bool startupPending_ = false, applyingLayout_ = false;
     bool changing_ = false, shuttingDown_ = false, restoring_ = true;
     bool activated_ = false;
     bool topmost_ = true, borderless_ = true, openWithOBS_ = false;
