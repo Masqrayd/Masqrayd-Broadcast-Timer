@@ -1,6 +1,6 @@
 # Masqrayd Broadcast Stack + Timer — Windows quick start
 
-1. Download **Masqrayd-Broadcast-Stack-1.2.0-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
+1. Download **Masqrayd-Broadcast-Stack-1.2.1-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
 2. Right-click the downloaded ZIP and choose **Extract All**.
 3. Close OBS completely.
 4. Open the extracted folder, double-click **INSTALL.cmd**, and accept the Windows administrator prompt. No Python, CMake, or Visual Studio installation is needed.
@@ -86,3 +86,12 @@ Open **Help > Log Files > View Current Log** in OBS and search for `Masqrayd Bro
 `C:\ProgramData\obs-studio\plugins\masqrayd-broadcast-timer\bin\64bit\masqrayd-broadcast-timer.dll`
 
 Portable OBS installations may need the DLL copied to their own `obs-plugins\64bit` folder instead. The supplied installer targets the standard Windows OBS installation.
+
+## Compact panel heights (1.2.1)
+
+Drag the horizontal divider above or below Timer to make that section shorter.
+Timer digits, labels, button text, spacing and margins scale with the available
+height. The timer body can shrink to 110 pixels (plus its stack header).
+Scene Collections can shrink to an 80-pixel body. Scene Controller rows and
+Studio/Send controls also scale with height. Use the freed room for the scene
+buttons. The stack remembers the section sizes; widening the window is optional.

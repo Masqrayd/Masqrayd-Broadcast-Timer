@@ -64,11 +64,12 @@ int main(int argc, char **argv) {
         menuAction(w, "previousStory", false); check(w.state().story == 1, "Previous is disabled at story one");
         click(w, "start"); click(w, "nextStory");
         check(w.state().story == 2, "Restarted sequence advances to story two");
-        for (QSize size : {QSize(220, 220), QSize(280, 600), QSize(800, 250), QSize(420, 355)}) {
+        for (QSize size : {QSize(220, 110), QSize(800, 110), QSize(160, 130), QSize(220, 220), QSize(280, 600), QSize(800, 250), QSize(420, 355)}) {
             w.resize(size); app.processEvents();
+            check(w.size() == size, "Timer accepts height-only compression below the old 220px minimum");
             for (const char *name : {"start", "pause", "stop", "reset", "nextStory", "takeBreak"}) {
                 auto *b = w.findChild<QPushButton *>(name);
-                check(b && b->width() > 20 && b->height() > 10, "Controls remain reachable on resize");
+                check(b && b->width() > 20 && b->height() >= 10, "Controls remain reachable on resize");
                 check(w.rect().contains(b->geometry()), "Controls stay within window");
             }
             check(w.findChild<QWidget *>("nextStory")->geometry().y() == w.findChild<QWidget *>("takeBreak")->geometry().y(), "Story and break remain side by side");

@@ -99,7 +99,17 @@ int main(int argc, char **argv) {
         stack.move(groupBefore + QPoint(30, 20)); app.processEvents();
         check(timer.mapToGlobal(QPoint(0, 0)) - before == stack.pos() - groupBefore, "Moving group moves embedded timer by the same amount");
         stack.resize(420, 800); app.processEvents();
-        check(timer.width() > 200 && timer.height() >= 220, "Resize respects panel minimums");
+        auto *split = stack.findChild<QSplitter *>("stackSplitter");
+        const int expandedTimer = timer.height(), expandedController = controller->height();
+        split->setSizes({0, 620, 140, 0}); app.processEvents();
+        check(timer.height() >= 110 && timer.height() < 160, "Timer pane shrinks below 220px through the vertical divider");
+        check(timer.height() < expandedTimer && controller->height() > expandedController,
+              "Compressing timer gives the scene controller more vertical room at the same stack width");
+        for (const char *name : {"start", "pause", "stop", "reset", "nextStory", "takeBreak"}) {
+            auto *control = timer.findChild<QPushButton *>(name);
+            check(control && timer.rect().contains(control->geometry()) && control->height() >= 10,
+                  "Compact embedded timer keeps all six controls inside its panel");
+        }
         stack.setHorizontal(true); app.processEvents();
         check(stack.findChild<QSplitter *>("stackSplitter")->orientation() == Qt::Horizontal, "Side-by-side layout is available");
         stack.setHorizontal(false);

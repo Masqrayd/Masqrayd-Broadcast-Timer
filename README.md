@@ -6,7 +6,7 @@ Designed for **OBS Studio 32.2.2 on Windows x64**. No Python or separate launche
 
 ## Get the Windows download
 
-Open [Actions](https://github.com/Masqrayd/Masqrayd-Broadcast-Timer/actions), select a successful **Build Broadcast Timer for Windows** run, and download **Masqrayd-Broadcast-Stack-1.2.0-Windows-x64** under Artifacts. Extract the ZIP, close OBS, then run **INSTALL.cmd**. The GitHub **Code > Download ZIP** option contains source code and cannot be installed directly.
+Open [Actions](https://github.com/Masqrayd/Masqrayd-Broadcast-Timer/actions), select a successful **Build Broadcast Timer for Windows** run, and download **Masqrayd-Broadcast-Stack-1.2.1-Windows-x64** under Artifacts. Extract the ZIP, close OBS, then run **INSTALL.cmd**. The GitHub **Code > Download ZIP** option contains source code and cannot be installed directly.
 
 See [the quick-start guide](docs/QUICK_START.md) for installation, controls, window settings, and troubleshooting.
 

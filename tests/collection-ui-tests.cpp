@@ -46,6 +46,14 @@ int main(int argc, char **argv) {
         panel.setColumns(2); panel.resize(220, 160); settle();
         check(button(0)->geometry().right() < button(1)->geometry().left() && button(0)->width() < 120, "Two columns remain side by side in a narrow window");
         check(button(0)->cursor().shape() == Qt::PointingHandCursor, "Buttons use click cursor");
+        for (const QSize size : {QSize(220, 80), QSize(600, 80)}) {
+            panel.resize(size); settle();
+            check(panel.size() == size, "Collections accepts height-only compression below 150px");
+            for (auto *control : panel.findChildren<QPushButton *>())
+                check(panel.rect().contains(control->geometry()) && control->height() >= 18,
+                      "Every collection button stays visible in the compact panel");
+        }
+        panel.resize(220, 160); settle();
         const QRect standalone = panel.geometry(); const auto flags = panel.windowFlags();
         BroadcastStack::Providers providers;
         providers.qtPanel = [&](BroadcastStack::Panel p) -> QWidget * { return p == BroadcastStack::Collections ? &panel : nullptr; };

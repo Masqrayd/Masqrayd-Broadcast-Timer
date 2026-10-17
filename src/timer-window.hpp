@@ -26,6 +26,7 @@ public:
 protected:
     void contextMenuEvent(QContextMenuEvent *) override;
     void closeEvent(QCloseEvent *) override;
+    void resizeEvent(QResizeEvent *) override;
     bool eventFilter(QObject *, QEvent *) override;
 private:
     void settingsDialog();
