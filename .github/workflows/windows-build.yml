@@ -27,6 +27,10 @@ jobs:
         run: cmake --preset windows-x64 -DBUILD_TESTING=ON
       - name: Build Windows x64 plugin
         run: cmake --build --preset windows-x64 --parallel
+      - name: Check teleprompter launchers and Windows single-instance behavior
+        run: |
+          python -m py_compile teleprompter/advanced_overlay_teleprompter_v7_11.py teleprompter/teleprompter_instance.py
+          python tests/teleprompter-instance-tests.py
       - name: Test controls and real native window attachment
         shell: pwsh
         run: |
@@ -48,6 +52,8 @@ jobs:
           Copy-Item scripts/UNINSTALL.cmd dist/
           Copy-Item docs/QUICK_START.md dist/
           Copy-Item LICENSE dist/
+          Copy-Item teleprompter dist/Teleprompter -Recurse
+          Get-ChildItem dist/Teleprompter -Directory -Filter __pycache__ -Recurse | Remove-Item -Recurse -Force
           if (!(Test-Path dist/masqrayd-broadcast-timer/bin/64bit/masqrayd-broadcast-timer.dll)) { throw 'Compiled DLL missing' }
           if (!(Test-Path dist/scene-vault/bin/64bit/scene-vault.dll)) { throw 'Scene controller DLL missing' }
           if (!(Test-Path dist/camera-popout-native/bin/64bit/camera-popout-native.dll)) { throw 'Camera DLL missing' }
@@ -69,6 +75,6 @@ jobs:
       - name: Downloadable Windows package
         uses: actions/upload-artifact@v4
         with:
-          name: Masqrayd-Broadcast-Stack-1.3.1-Windows-x64
+          name: Masqrayd-Broadcast-Stack-1.4.0-Windows-x64
           path: dist/
           if-no-files-found: error

@@ -4,3 +4,5 @@
 *.png
 *.user
 /_partners/
+__pycache__/
+*.pyc

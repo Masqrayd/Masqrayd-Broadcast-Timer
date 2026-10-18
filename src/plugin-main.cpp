@@ -11,6 +11,7 @@
 #include "broadcast-stack.hpp"
 #include "native-camera-surface.hpp"
 #include "obs-timer-events.hpp"
+#include "teleprompter-launcher.hpp"
 
 OBS_DECLARE_MODULE()
 
@@ -18,6 +19,8 @@ static QPointer<TimerWindow> timerWindow;
 static QPointer<QAction> toolsAction;
 static QPointer<BroadcastStack> stackWindow;
 static QPointer<QAction> stackAction;
+static QPointer<QAction> teleprompterAction;
+static QPointer<TeleprompterLauncher> teleprompter;
 static bool exiting = false;
 
 MODULE_EXPORT const char *obs_module_name(void) { return "Masqrayd Broadcast Timer"; }
@@ -42,7 +45,7 @@ static void frontendEvent(enum obs_frontend_event event, void *) {
 }
 
 bool obs_module_load(void) {
-    blog(LOG_INFO, "[Masqrayd Broadcast Timer] Loading version 1.3.1");
+    blog(LOG_INFO, "[Masqrayd Broadcast Timer] Loading version 1.4.0");
     return true;
 }
 
@@ -67,6 +70,9 @@ void obs_module_post_load(void) {
         }
     });
     BroadcastStack::Providers providers;
+    teleprompter = new TeleprompterLauncher(QFileInfo(config).dir().filePath("teleprompter.ini"), main);
+    providers.openTeleprompter = [] { if (teleprompter && !exiting) teleprompter->open(); };
+    providers.configureTeleprompter = [] { if (teleprompter && !exiting) teleprompter->configure(); };
     providers.qtPanel = [](BroadcastStack::Panel panel) -> QWidget * {
         if (panel == BroadcastStack::Timer) return timerWindow;
         if (panel == BroadcastStack::Controller || panel == BroadcastStack::Collections) for (auto *widget : QApplication::allWidgets())
@@ -87,6 +93,10 @@ void obs_module_post_load(void) {
         }
     };
     stackWindow = new BroadcastStack(QFileInfo(config).dir().filePath("broadcast-stack.ini"), providers);
+    teleprompterAction = static_cast<QAction *>(obs_frontend_add_tools_menu_qaction("Open Masqrayd Teleprompter"));
+    if (teleprompterAction) QObject::connect(teleprompterAction, &QAction::triggered, teleprompter, [] {
+        if (teleprompter && !exiting) teleprompter->open();
+    });
     stackAction = static_cast<QAction *>(obs_frontend_add_tools_menu_qaction("Masqrayd Broadcast Stack"));
     if (stackAction) QObject::connect(stackAction, &QAction::triggered, stackWindow, [] {
         if (stackWindow && !exiting) stackWindow->showStack();
@@ -110,4 +120,6 @@ void obs_module_unload(void) {
     if (stackAction) delete stackAction.data();
     if (timerWindow) { timerWindow->shutdown(); delete timerWindow.data(); }
     if (toolsAction) delete toolsAction.data();
+    if (teleprompterAction) delete teleprompterAction.data();
+    if (teleprompter) delete teleprompter.data();
 }

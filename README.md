@@ -1,12 +1,18 @@
 # Masqrayd Broadcast Timer + Broadcast Stack
 
+Version 1.4.0 adds **Open Teleprompter** to the Broadcast Stack and OBS Tools
+menu. Choose your existing v7.11 Python file once; the launcher remembers it
+and brings an existing reader forward. The bundled teleprompter update also
+prevents duplicate copies from BAT/VBS launches. See the quick start for the
+two Python files to copy beside your existing settings and voice model.
+
 A native OBS Studio plugin for timing stories and breaks. Includes a floating, resizable timer, count-down/count-up story modes, separate break countdowns, configurable red warnings, overtime, and a smaller local date/time clock.
 
 Designed for **OBS Studio 32.2.2 on Windows x64**. No Python or separate launcher is required. Opens/closes with OBS and is available under **Tools > Masqrayd Broadcast Timer**.
 
 ## Get the Windows download
 
-Open [Actions](https://github.com/Masqrayd/Masqrayd-Broadcast-Timer/actions), select a successful **Build Broadcast Timer for Windows** run, and download **Masqrayd-Broadcast-Stack-1.3.1-Windows-x64** under Artifacts. Extract the ZIP, close OBS, then run **INSTALL.cmd**. The GitHub **Code > Download ZIP** option contains source code and cannot be installed directly.
+Open [Actions](https://github.com/Masqrayd/Masqrayd-Broadcast-Timer/actions), select a successful **Build Broadcast Timer for Windows** run, and download **Masqrayd-Broadcast-Stack-1.4.0-Windows-x64** under Artifacts. Extract the ZIP, close OBS, then run **INSTALL.cmd**. The GitHub **Code > Download ZIP** option contains source code and cannot be installed directly.
 
 See [the quick-start guide](docs/QUICK_START.md) for installation, controls, window settings, and troubleshooting.
 
