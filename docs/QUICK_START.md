@@ -1,6 +1,44 @@
 # Masqrayd Broadcast Stack + Timer — Windows quick start
 
-1. Download **Masqrayd-Broadcast-Stack-1.3.1-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
+## Open your teleprompter from OBS (1.4.0)
+
+Close OBS, extract the full package and run **INSTALL.cmd** as usual.
+Open **Tools > Masqrayd Broadcast Stack** and click **Open Teleprompter**.
+The same launcher is available under **Tools > Open Masqrayd Teleprompter**,
+so the stack does not have to be open.
+
+On the first click, choose your existing
+**advanced_overlay_teleprompter_v7_11.py** file. The launcher remembers its
+location and runs it using Python from PATH, just like your existing BAT file.
+Your script, microphone, colors, window positions and voice-follow model stay
+in their existing folder. Keep **teleprompter_settings.json** and the Vosk
+model folder beside that Python file.
+
+To install the improved duplicate protection, copy the four files from the
+package's **Teleprompter** folder into your existing teleprompter folder,
+replacing the matching files. Do this while the teleprompter is closed.
+**teleprompter_instance.py** is new and must stay beside the main Python file.
+Do not replace or delete your settings JSON or Vosk model folder. The VBS
+launcher retains its old filename but now opens v7.11 correctly.
+
+Clicking **Open Teleprompter** again brings your existing v7.11 windows
+forward. The improved reader also prevents duplicate copies when you use
+your BAT or VBS shortcut. Closing OBS leaves the teleprompter running;
+close either teleprompter window to exit and save normally. This update
+adds a launcher; the editor and reading overlay remain separate windows.
+
+To move the files later, open **Panels > Teleprompter settings... > Choose
+teleprompter file...**. If Python is not found or the app does not open, use
+**Choose Python executable...** and select the **pythonw.exe** from the Python
+installation that already runs your teleprompter and its voice dependencies.
+This update does not install Python or change your audio packages.
+
+The existing native panels and their saved layout remain compatible with 1.3.1.
+The launcher is a compact full-width button below the stack header.
+
+## Install the native panels
+
+1. Download **Masqrayd-Broadcast-Stack-1.4.0-Windows-x64** from the Artifacts section of a successful Windows build. GitHub requires you to be signed in to download Actions artifacts.
 2. Right-click the downloaded ZIP and choose **Extract All**.
 3. Close OBS completely.
 4. Open the extracted folder, double-click **INSTALL.cmd**, and accept the Windows administrator prompt. No Python, CMake, or Visual Studio installation is needed.

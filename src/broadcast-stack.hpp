@@ -20,6 +20,8 @@ public:
         std::function<QWidget *(Panel)> qtPanel;
         std::function<std::uintptr_t()> camera;
         std::function<void(Panel)> open;
+        std::function<void()> openTeleprompter;
+        std::function<void()> configureTeleprompter;
     };
     BroadcastStack(const QString &settingsFile, Providers providers);
     ~BroadcastStack() override;

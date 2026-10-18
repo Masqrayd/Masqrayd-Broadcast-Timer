@@ -11,6 +11,7 @@
 #include <QMouseEvent>
 #include <QMoveEvent>
 #include <QResizeEvent>
+#include <QPushButton>
 #include <QScreen>
 #include <QScopedValueRollback>
 #include <QSplitter>
@@ -62,6 +63,16 @@ BroadcastStack::BroadcastStack(const QString &file, Providers providers)
     menu->setCursor(Qt::PointingHandCursor);
     connect(menu, &QToolButton::clicked, this, [this, menu] { options(menu->mapToGlobal(QPoint(0, menu->height()))); });
     barLayout->addWidget(title_, 1); barLayout->addWidget(menu); layout->addWidget(bar_);
+    if (providers_.openTeleprompter) {
+        auto *launch = new QPushButton("Open Teleprompter", this);
+        launch->setObjectName("stackOpenTeleprompter");
+        launch->setCursor(Qt::PointingHandCursor);
+        launch->setMinimumHeight(26);
+        launch->setToolTip("Open your reading overlay, or bring the existing teleprompter forward");
+        launch->setStyleSheet("QPushButton { color:#eeeef4; background:#3d3d4b; border:1px solid #555562; border-radius:3px; padding:3px; } QPushButton:hover { border-color:#d6af52; }");
+        connect(launch, &QPushButton::clicked, this, [this] { providers_.openTeleprompter(); });
+        layout->addWidget(launch);
+    }
     splitter_ = new QSplitter(Qt::Vertical, this); splitter_->setObjectName("stackSplitter");
     splitter_->setChildrenCollapsible(false); splitter_->setHandleWidth(5); layout->addWidget(splitter_, 1);
     camera_ = nullptr;
@@ -277,6 +288,12 @@ void BroadcastStack::closeEvent(QCloseEvent *event) { savePreferences(); hide();
 void BroadcastStack::contextMenuEvent(QContextMenuEvent *event) { options(event->globalPos()); }
 void BroadcastStack::options(const QPoint &position) {
     QMenu menu(this); menu.setObjectName("broadcastStackMenu");
+    if (providers_.openTeleprompter) {
+        menu.addAction("Open Teleprompter", this, [this] { providers_.openTeleprompter(); });
+        if (providers_.configureTeleprompter)
+            menu.addAction("Teleprompter settings...", this, [this] { providers_.configureTeleprompter(); });
+        menu.addSeparator();
+    }
     for (int i = 0; i < PanelCount; ++i) {
         auto panel = static_cast<Panel>(i); auto *action = menu.addAction(QString("Include %1").arg(names[i]));
         action->setObjectName(QString("include_%1").arg(keys[i])); action->setCheckable(true); action->setChecked(included(panel));
